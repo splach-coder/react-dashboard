@@ -1,0 +1,21 @@
+[
+    {
+      "provider_name": "aad",
+      "user_id": "anas-dev-id",
+      "user_claims": [
+        {
+          "typ": "name",
+          "val": "Anas Dev"
+        },
+        {
+          "typ": "email",
+          "val": "anas@example.com"
+        },
+        {
+          "typ": "roles",
+          "val": "admin"
+        }
+      ]
+    }
+  ]
+  
