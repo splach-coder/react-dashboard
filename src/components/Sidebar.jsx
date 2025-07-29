@@ -49,8 +49,8 @@ const Sidebar = ({ collapsed, toggle }) => {
       path: '/uploads',
       subtitles: [
         { label: 'Flows', path: '/uploads/flows' },
-        { label: 'Informations', path: '/uploads/informations' },
-        { label: 'Request Upload', path: '/uploads/request' }
+        { label: 'Informations', path: '/uploads/flows/informations' },
+        { label: 'Request Upload', path: '/uploads/flows/request' }
       ],
       hasSubmenu: true
     },
