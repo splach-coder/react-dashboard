@@ -120,7 +120,7 @@ export default function FlowRunsTable({ onSelectRun }) {
 
       switch (timeRange) {
         case "today":
-          cutoff.setDate(now.getDate());
+          cutoff.setHours(0, 0, 0, 0);
           break;
         case "week":
           cutoff.setDate(now.getDate() - 7);
@@ -248,16 +248,6 @@ export default function FlowRunsTable({ onSelectRun }) {
               <p className="text-[#6B6B6B] text-sm mt-1">
                 {filteredData.length} Total • Showing {paginatedData.length} of {filteredData.length} results
               </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button className="flex items-center px-3 py-2 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] border border-[#EAEAEA] rounded-lg hover:bg-gray-50 transition-colors">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </button>
-              <button className="flex items-center px-3 py-2 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] border border-[#EAEAEA] rounded-lg hover:bg-gray-50 transition-colors">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </button>
             </div>
           </div>
         </div>
