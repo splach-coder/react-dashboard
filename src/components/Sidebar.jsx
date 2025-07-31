@@ -74,7 +74,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       path: '/statistics',
       subtitles: [
         { label: 'Performance', path: '/statistics/performance' },
-        { label: 'Usage', path: '/statistics/usage' },
+        { label: 'Compare', path: '/statistics/performance/compare' },
         { label: 'Trends', path: '/statistics/trends' }
       ],
       hasSubmenu: true
@@ -227,7 +227,7 @@ const Sidebar = ({ collapsed, toggle }) => {
             <span className="text-white font-bold text-sm">L</span>
           </div>
           {!collapsed && (
-            <span className="font-bold text-text-primary text-lg">Doclines</span>
+            <span className="font-bold text-text-primary text-lg">DKM</span>
           )}
         </div>
         <button
@@ -295,7 +295,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       <div className="p-4 border-t border-border">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-            <span className="text-text-muted font-medium text-sm">AR</span>
+            <span className="text-text-muted font-medium text-sm">{user.name.split(' ')[0][0]}{user.name.split(' ')[1][0]}</span>
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">

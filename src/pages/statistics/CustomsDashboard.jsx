@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -20,7 +20,7 @@ import {
   Legend,
 } from "chart.js";
 import UserPerformanceDashboard from "./UserPerformanceDashboard";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 // Register ChartJS components
 ChartJS.register(
@@ -32,6 +32,34 @@ ChartJS.register(
   Legend
 );
 
+/* -------------------------------------------------
+   Simple localStorage cache helpers
+   ------------------------------------------------- */
+const CACHE_KEY = "customs-dashboard-cache";
+const CACHE_TTL = 60 * 60 * 1000; // 60 minutes in ms
+
+const readCache = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts, payload } = JSON.parse(raw);
+    return Date.now() - ts < CACHE_TTL ? payload : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCache = (payload) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), payload }));
+  } catch {
+    /* ignore localStorage quota errors */
+  }
+};
+
+/* -------------------------------------------------
+   Main component
+   ------------------------------------------------- */
 const CustomsDashboard = () => {
   const [activeTab, setActiveTab] = useState("import");
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,40 +71,59 @@ const CustomsDashboard = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
 
-  // Fetch data from API
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const apiUrl = `${
-          import.meta.env.VITE_API_BASE_URL
-        }/api/performance?code=${import.meta.env.VITE_API_CODE}`;
-        const response = await fetch(apiUrl);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        console.error("Failed to fetch data:", err);
-        setError(err.message);
-      } finally {
+  /* -------------------------------------------------
+     Fetch + cache logic
+     ------------------------------------------------- */
+  const fetchData = useCallback(async (force = false) => {
+    // 1. Try cache unless forcing refresh
+    if (!force) {
+      const cached = readCache();
+      if (cached) {
+        setData(cached);
         setLoading(false);
+        return;
       }
-    };
+    }
 
-    fetchData();
+    // 2. Otherwise hit API
+    try {
+      setLoading(true);
+      setError(null);
+      const apiUrl = `${
+        import.meta.env.VITE_API_BASE_URL
+      }/api/performance?code=${import.meta.env.VITE_API_CODE}`;
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setData(result);
+      writeCache(result);
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // Initial load
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // When user row is clicked
   useEffect(() => {
     if (selectedUser) {
       navigate(`/statistics/performance/${selectedUser}`);
     }
   }, [selectedUser, navigate]);
 
-  // Calculate summary statistics
+  /* -------------------------------------------------
+     Derived data (unchanged)
+     ------------------------------------------------- */
   const summaryStats = useMemo(() => {
     if (!data.length) return { importTotal: 0, exportTotal: 0 };
 
@@ -101,7 +148,6 @@ const CustomsDashboard = () => {
     return { importTotal, exportTotal };
   }, [data]);
 
-  // Calculate daily totals for chart
   const dailyTotals = useMemo(() => {
     if (!data.length) return [];
 
@@ -125,7 +171,6 @@ const CustomsDashboard = () => {
     });
   }, [data]);
 
-  // Prepare data for Chart.js
   const chartData = {
     labels: dailyTotals.map((item) => item.date),
     datasets: [
@@ -167,7 +212,6 @@ const CustomsDashboard = () => {
     },
   };
 
-  // Filter and sort users
   const filteredUsers = useMemo(() => {
     if (!data.length) return [];
 
@@ -210,6 +254,9 @@ const CustomsDashboard = () => {
     return { total, maxDay, maxDate, hasZeroActivity };
   };
 
+  /* -------------------------------------------------
+     TeamTable sub-component (unchanged)
+     ------------------------------------------------- */
   const TeamTable = ({ users }) => {
     if (!data.length) return null;
     const dates = Object.keys(data[0].daily_file_creations);
@@ -439,6 +486,9 @@ const CustomsDashboard = () => {
     );
   };
 
+  /* -------------------------------------------------
+     Loading / Error states (with Refresh button)
+     ------------------------------------------------- */
   if (loading) {
     return (
       <div
@@ -479,7 +529,7 @@ const CustomsDashboard = () => {
             {error}
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => fetchData(true)}
             className="px-4 py-2 text-white font-medium text-sm transition-colors hover:opacity-90"
             style={{
               backgroundColor: "#0078d4",
@@ -494,6 +544,9 @@ const CustomsDashboard = () => {
     );
   }
 
+  /* -------------------------------------------------
+     Main render (unchanged)
+     ------------------------------------------------- */
   return (
     <div
       className="min-h-screen p-4 md:p-6"

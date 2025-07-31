@@ -1,73 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, X, FileText, Image, PlusSquare, Check, AlertCircle, Mail, Download, ArrowUpCircle, Edit3, Square, Type, Palette } from 'lucide-react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Upload, X, FileText, Check, Mail, Download, ArrowUpCircle, Edit3, Square, Type, Palette, PlusSquare, Hand } from 'lucide-react';
 
-// Mock data
-const documentTypes = [
-  'Invoice',
-  'Packing List', 
-  'Material Test Certificate',
-  'Certificate of Origin',
-  'Bill of Lading',
-  'Commercial Invoice',
-  'Shipping Manifest',
-  'Quality Certificate',
-  'Customs Declaration',
-  'Insurance Certificate'
-];
-
-const principals = [
-  'Global Widgets BV',
-  'Tech Solutions Inc',
-  'Manufacturing Corp',
-  'Export Partners Ltd',
-  'Trading Company SA',
-  'Industrial Supplies Co',
-  'Maritime Logistics Ltd'
-];
-
-// Sample documents by type (5 per type)
-const sampleDocuments = {
-  'Invoice': [
-    'Invoice_GWI-2024-001.pdf',
-    'Invoice_GWI-2024-002.pdf', 
-    'Invoice_GWI-2024-003.pdf',
-    'Invoice_GWI-2024-004.pdf',
-    'Invoice_GWI-2024-005.pdf'
-  ],
-  'Packing List': [
-    'PackingList_PL-2024-001.pdf',
-    'PackingList_PL-2024-002.pdf',
-    'PackingList_PL-2024-003.pdf', 
-    'PackingList_PL-2024-004.pdf',
-    'PackingList_PL-2024-005.pdf'
-  ],
-  'Material Test Certificate': [
-    'MTC_Certificate-001.pdf',
-    'MTC_Certificate-002.pdf',
-    'MTC_Certificate-003.pdf',
-    'MTC_Certificate-004.pdf',
-    'MTC_Certificate-005.pdf'
-  ],
-  'Certificate of Origin': [
-    'CertOrigin_CO-2024-001.pdf',
-    'CertOrigin_CO-2024-002.pdf',
-    'CertOrigin_CO-2024-003.pdf',
-    'CertOrigin_CO-2024-004.pdf',
-    'CertOrigin_CO-2024-005.pdf'
-  ],
-  'Bill of Lading': [
-    'BillOfLading_BOL-001.pdf',
-    'BillOfLading_BOL-002.pdf',
-    'BillOfLading_BOL-003.pdf',
-    'BillOfLading_BOL-004.pdf',
-    'BillOfLading_BOL-005.pdf'
-  ]
-};
-
-// Enhanced PDF Canvas Modal with drawing tools
+// Enhanced PDF Canvas Modal with better viewing and interaction
 const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
   const [fields, setFields] = useState(existingFields);
-  const [drawingMode, setDrawingMode] = useState('rectangle'); // rectangle, text, highlight
+  const [drawingMode, setDrawingMode] = useState(null); // null, 'rectangle', 'text', 'move'
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentField, setCurrentField] = useState(null);
   const [fieldLabel, setFieldLabel] = useState('');
@@ -75,21 +12,103 @@ const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
   const [textInput, setTextInput] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pdfError, setPdfError] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfScale, setPdfScale] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startDragPos, setStartDragPos] = useState({ x: 0, y: 0 });
+  const [pdfPosition, setPdfPosition] = useState({ x: 0, y: 0 });
+  
+  const canvasRef = useRef(null);
+  const pdfContainerRef = useRef(null);
+  const pdfViewerRef = useRef(null);
 
-  const colors = [
-    '#E54C37', // Primary red
-    '#3B82F6', // Blue
-    '#10B981', // Green
-    '#F59E0B', // Yellow
-    '#8B5CF6', // Purple
-    '#EF4444', // Red
-    '#6B7280'  // Gray
-  ];
+  const colors = ['#E54C37', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#6B7280'];
 
-  const handleCanvasClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  // Load PDF using URL.createObjectURL
+  useEffect(() => {
+    if (file.fileObject) {
+      try {
+        const url = URL.createObjectURL(file.fileObject);
+        setPdfUrl(url);
+        setPdfLoading(false);
+        return () => URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error creating PDF URL:', error);
+        setPdfError('Failed to load PDF file');
+        setPdfLoading(false);
+      }
+    }
+  }, [file.fileObject]);
+
+  // Improved PDF rendering with better controls
+  const renderPdfViewer = () => {
+    if (pdfLoading) {
+      return (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading PDF...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (pdfError) {
+      return (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <div className="text-center text-red-600">
+            <X className="w-12 h-12 mx-auto mb-2" />
+            <p>{pdfError}</p>
+            <p className="text-sm text-gray-500 mt-2">Please try uploading a different PDF file.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        ref={pdfViewerRef}
+        className="absolute inset-0 bg-white overflow-hidden"
+        style={{
+          transform: `translate(${pdfPosition.x}px, ${pdfPosition.y}px) scale(${pdfScale})`,
+          transformOrigin: 'top left',
+          width: '100%',
+          height: '100%'
+        }}
+      >
+        <iframe
+          src={`${pdfUrl}#page=${pageNumber}`}
+          className="w-full h-full border-0"
+          title="PDF Viewer"
+          style={{ pointerEvents: drawingMode === 'move' ? 'auto' : 'none' }}
+        />
+      </div>
+    );
+  };
+
+  const getMousePosition = (e) => {
+    const rect = pdfContainerRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    
+    // Adjust for PDF position and scale
+    return {
+      x: (e.clientX - rect.left - pdfPosition.x) / pdfScale,
+      y: (e.clientY - rect.top - pdfPosition.y) / pdfScale
+    };
+  };
+
+  const handleMouseDown = (e) => {
+    const { x, y } = getMousePosition(e);
+
+    if (drawingMode === 'move') {
+      setIsDragging(true);
+      setStartDragPos({ x, y });
+      return;
+    }
 
     if (drawingMode === 'text') {
       setTextPosition({ x, y });
@@ -101,46 +120,58 @@ const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
       alert('Please enter a field label first');
       return;
     }
-  };
 
-  const handleMouseDown = (e) => {
-    if (drawingMode !== 'rectangle') return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setIsDrawing(true);
-    setCurrentField({
-      x,
-      y,
-      width: 0,
-      height: 0,
-      label: fieldLabel.trim(),
-      type: 'rectangle',
-      color: selectedColor
-    });
+    if (drawingMode === 'rectangle') {
+      setIsDrawing(true);
+      setCurrentField({
+        x,
+        y,
+        width: 0,
+        height: 0,
+        label: fieldLabel.trim(),
+        type: 'rectangle',
+        color: selectedColor
+      });
+    }
   };
 
   const handleMouseMove = (e) => {
-    if (!isDrawing || !currentField || drawingMode !== 'rectangle') return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setCurrentField(prev => ({
-      ...prev,
-      width: Math.abs(x - prev.x),
-      height: Math.abs(y - prev.y),
-      x: Math.min(prev.x, x),
-      y: Math.min(prev.y, y)
-    }));
+    const { x, y } = getMousePosition(e);
+
+    if (isDragging && drawingMode === 'move') {
+      setPdfPosition(prev => ({
+        x: prev.x + (x - startDragPos.x),
+        y: prev.y + (y - startDragPos.y)
+      }));
+      return;
+    }
+
+    if (isDrawing && currentField && drawingMode === 'rectangle') {
+      setCurrentField(prev => ({
+        ...prev,
+        width: x - prev.x,
+        height: y - prev.y
+      }));
+    }
   };
 
   const handleMouseUp = () => {
-    if (isDrawing && currentField && currentField.width > 10 && currentField.height > 10) {
-      setFields(prev => [...prev, { ...currentField, page: 0 }]);
+    if (isDragging) {
+      setIsDragging(false);
+      return;
+    }
+
+    if (isDrawing && currentField && Math.abs(currentField.width) > 10 && Math.abs(currentField.height) > 10) {
+      const normalizedField = {
+        ...currentField,
+        x: currentField.width < 0 ? currentField.x + currentField.width : currentField.x,
+        y: currentField.height < 0 ? currentField.y + currentField.height : currentField.y,
+        width: Math.abs(currentField.width),
+        height: Math.abs(currentField.height),
+        page: pageNumber - 1
+      };
+      
+      setFields(prev => [...prev, normalizedField]);
       setFieldLabel('');
     }
     setIsDrawing(false);
@@ -152,20 +183,18 @@ const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
       setFields(prev => [...prev, {
         x: textPosition.x,
         y: textPosition.y,
-        width: textInput.length * 8,
-        height: 20,
         label: textInput.trim(),
         type: 'text',
         color: selectedColor,
-        page: 0
+        page: pageNumber - 1
       }]);
       setTextInput('');
       setShowTextInput(false);
     }
   };
 
-  const removeField = (index) => {
-    setFields(prev => prev.filter((_, i) => i !== index));
+  const removeField = (fieldToRemove) => {
+    setFields(prev => prev.filter(field => field !== fieldToRemove));
   };
 
   const handleSave = () => {
@@ -173,170 +202,194 @@ const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
     onClose();
   };
 
+  const resetView = () => {
+    setPdfPosition({ x: 0, y: 0 });
+    setPdfScale(1);
+  };
+
+  const currentPageFields = fields.filter(field => field.page === pageNumber - 1);
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold">PDF Annotation Tool</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] flex flex-col">
+        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+          <h2 className="text-xl font-semibold">Annotate Document: {file.name}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+            <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Toolbar */}
-        <div className="p-4 border-b bg-gray-50">
+        {/* Enhanced Toolbar */}
+        <div className="p-3 border-b bg-gray-50">
           <div className="flex flex-wrap gap-4 items-center">
-            {/* Drawing Mode */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDrawingMode('rectangle')}
-                className={`px-3 py-2 rounded-lg flex items-center gap-2 ${
-                  drawingMode === 'rectangle' ? 'bg-primary text-white' : 'bg-white border'
-                }`}
-              >
-                <Square className="w-4 h-4" />
-                Rectangle
-              </button>
-              <button
-                onClick={() => setDrawingMode('text')}
-                className={`px-3 py-2 rounded-lg flex items-center gap-2 ${
-                  drawingMode === 'text' ? 'bg-primary text-white' : 'bg-white border'
-                }`}
-              >
-                <Type className="w-4 h-4" />
-                Text
-              </button>
-            </div>
-
-            {/* Color Picker */}
             <div className="flex items-center gap-2">
-              <Palette className="w-4 h-4 text-gray-600" />
-              <div className="flex gap-1">
-                {colors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`w-6 h-6 rounded border-2 ${
-                      selectedColor === color ? 'border-gray-800' : 'border-gray-300'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
+              <span className="text-sm font-medium">Tool:</span>
+              <button 
+                onClick={() => setDrawingMode('move')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm ${
+                  drawingMode === 'move' ? 'bg-blue-500 text-white' : 'bg-white border hover:bg-gray-50'
+                }`}
+              >
+                <Hand className="w-4 h-4" /> Move
+              </button>
+              <button 
+                onClick={() => setDrawingMode('rectangle')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm ${
+                  drawingMode === 'rectangle' ? 'bg-red-500 text-white' : 'bg-white border hover:bg-gray-50'
+                }`}
+              >
+                <Square className="w-4 h-4" /> Rectangle
+              </button>
+              <button 
+                onClick={() => setDrawingMode('text')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm ${
+                  drawingMode === 'text' ? 'bg-red-500 text-white' : 'bg-white border hover:bg-gray-50'
+                }`}
+              >
+                <Type className="w-4 h-4" /> Text
+              </button>
             </div>
-
-            {/* Field Label Input (for rectangles) */}
+            
+            <div className="flex items-center gap-2">
+              <Palette className="w-5 h-5 text-gray-600" />
+              {colors.map(color => (
+                <button 
+                  key={color} 
+                  onClick={() => setSelectedColor(color)} 
+                  className={`w-6 h-6 rounded-full border-2 ${
+                    selectedColor === color ? 'border-gray-800' : 'border-gray-300'
+                  }`} 
+                  style={{ backgroundColor: color }} 
+                />
+              ))}
+            </div>
+            
             {drawingMode === 'rectangle' && (
-              <input
-                type="text"
-                value={fieldLabel}
-                onChange={(e) => setFieldLabel(e.target.value)}
-                placeholder="Field label (e.g., invoice_total)"
-                className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+              <input 
+                type="text" 
+                value={fieldLabel} 
+                onChange={(e) => setFieldLabel(e.target.value)} 
+                placeholder="Enter field label..." 
+                className="flex-grow border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" 
               />
             )}
 
-            <span className="text-sm text-gray-600">
-              {fields.length} annotations
-            </span>
+            <div className="flex items-center gap-2 ml-auto">
+              <button 
+                onClick={resetView}
+                className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+              >
+                Reset View
+              </button>
+              <span className="text-sm text-gray-600">Zoom:</span>
+              <button 
+                onClick={() => setPdfScale(prev => Math.max(0.5, prev - 0.25))}
+                className="px-2 py-1 text-sm border rounded hover:bg-gray-50"
+              >
+                -
+              </button>
+              <span className="text-sm w-12 text-center">{Math.round(pdfScale * 100)}%</span>
+              <button 
+                onClick={() => setPdfScale(prev => Math.min(3, prev + 0.25))}
+                className="px-2 py-1 text-sm border rounded hover:bg-gray-50"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
-          <div className="relative border-2 border-dashed border-gray-300 bg-gray-50 min-h-[700px]">
-            {/* Mock PDF content */}
-            <div className="absolute inset-4 bg-white shadow-lg">
-              <div className="p-6 space-y-4">
-                <div className="text-center">
-                  <h1 className="text-xl font-bold">INVOICE</h1>
-                  <p className="text-sm text-gray-600">Global Widgets BV</p>
-                </div>
-                <div className="border-t pt-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p><strong>Invoice #:</strong> GWI-2024-07-29</p>
-                      <p><strong>Date:</strong> July 29, 2024</p>
-                      <p><strong>Customer:</strong> ABC Manufacturing</p>
-                    </div>
-                    <div>
-                      <p><strong>Total:</strong> $1,234.56</p>
-                      <p><strong>Due:</strong> August 28, 2024</p>
-                      <p><strong>Terms:</strong> Net 30</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t pt-4">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2">Item Description</th>
-                        <th className="text-right py-2">Qty</th>
-                        <th className="text-right py-2">Unit Price</th>
-                        <th className="text-right py-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Array.from({ length: 8 }, (_, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="py-1">Widget Component {String.fromCharCode(65 + i)}</td>
-                          <td className="text-right py-1">{i + 1}</td>
-                          <td className="text-right py-1">$100.{i}0</td>
-                          <td className="text-right py-1">${(i + 1) * 100}.{i}0</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="border-t pt-4 text-right">
-                  <div className="space-y-1 text-sm">
-                    <p><strong>Subtotal:</strong> $3,600.00</p>
-                    <p><strong>Tax (8.5%):</strong> $306.00</p>
-                    <p><strong>Shipping:</strong> $50.00</p>
-                    <p className="text-lg"><strong>Total Amount:</strong> $3,956.00</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Drawing overlay */}
-            <div
-              className="absolute inset-0 cursor-crosshair"
-              onClick={handleCanvasClick}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto p-4 bg-gray-100">
+          {/* Page Navigation */}
+          <div className="flex justify-center items-center gap-4 mb-4">
+            <button 
+              onClick={() => setPageNumber(prev => Math.max(prev - 1, 1))}
+              disabled={pageNumber <= 1}
+              className="px-3 py-1 bg-white border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
-              {/* Existing annotations */}
-              {fields.map((field, index) => (
-                <div
-                  key={index}
-                  className="absolute border-2"
-                  style={{
-                    left: field.x,
-                    top: field.y,
-                    width: field.width,
-                    height: field.height,
-                    borderColor: field.color,
-                    backgroundColor: field.type === 'text' ? 'transparent' : `${field.color}20`
-                  }}
-                >
-                  {field.type === 'text' ? (
-                    <span 
-                      className="text-sm font-medium"
-                      style={{ color: field.color }}
+              Previous
+            </button>
+            <span className="text-sm font-medium px-4 py-1 bg-white rounded border">
+              Page {pageNumber} {numPages && `of ${numPages}`}
+            </span>
+            <button 
+              onClick={() => setPageNumber(prev => prev + 1)}
+              className="px-3 py-1 bg-white border rounded hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
+
+          {/* Enhanced PDF Container with better interaction */}
+          <div 
+            ref={pdfContainerRef}
+            className="relative mx-auto bg-white shadow-lg overflow-hidden"
+            style={{ 
+              width: '100%', 
+              height: '600px',
+              cursor: drawingMode === 'move' ? (isDragging ? 'grabbing' : 'grab') : 
+                     drawingMode === 'rectangle' ? 'crosshair' : 
+                     drawingMode === 'text' ? 'text' : 'default'
+            }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* PDF Display */}
+            {renderPdfViewer()}
+
+            {/* Annotations Overlay */}
+            <div className="absolute inset-0 pointer-events-none">
+              {currentPageFields.map((field, index) => (
+                <div key={index}>
+                  {field.type === 'rectangle' && (
+                    <div 
+                      className="absolute border-2 pointer-events-auto" 
+                      style={{ 
+                        left: field.x * pdfScale + pdfPosition.x, 
+                        top: field.y * pdfScale + pdfPosition.y, 
+                        width: field.width * pdfScale, 
+                        height: field.height * pdfScale, 
+                        borderColor: field.color, 
+                        backgroundColor: `${field.color}15` 
+                      }}
+                    >
+                      <div 
+                        className="absolute -top-6 left-0 text-white text-xs px-2 py-0.5 rounded-full flex items-center whitespace-nowrap" 
+                        style={{ backgroundColor: field.color }}
+                      >
+                        {field.label}
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            removeField(field); 
+                          }} 
+                          className="ml-2 text-white hover:text-red-200 font-bold"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {field.type === 'text' && (
+                    <div 
+                      className="absolute pointer-events-auto text-sm font-medium p-1 rounded"
+                      style={{ 
+                        left: field.x * pdfScale + pdfPosition.x, 
+                        top: field.y * pdfScale + pdfPosition.y, 
+                        color: field.color,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                      }}
                     >
                       {field.label}
-                    </span>
-                  ) : (
-                    <div className="absolute -top-6 left-0 text-white text-xs px-1 rounded"
-                         style={{ backgroundColor: field.color }}>
-                      {field.label}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeField(index);
-                        }}
-                        className="ml-1 hover:text-red-200"
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          removeField(field); 
+                        }} 
+                        className="ml-2 text-red-500 hover:text-red-700 font-bold"
                       >
                         ×
                       </button>
@@ -345,18 +398,18 @@ const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
                 </div>
               ))}
 
-              {/* Current drawing field */}
-              {isDrawing && currentField && drawingMode === 'rectangle' && (
-                <div
-                  className="absolute border-2"
-                  style={{
-                    left: currentField.x,
-                    top: currentField.y,
-                    width: currentField.width,
-                    height: currentField.height,
-                    borderColor: selectedColor,
-                    backgroundColor: `${selectedColor}30`
-                  }}
+              {/* Current Drawing Field */}
+              {isDrawing && currentField && (
+                <div 
+                  className="absolute border-2 border-dashed" 
+                  style={{ 
+                    left: (currentField.width < 0 ? currentField.x + currentField.width : currentField.x) * pdfScale + pdfPosition.x,
+                    top: (currentField.height < 0 ? currentField.y + currentField.height : currentField.y) * pdfScale + pdfPosition.y,
+                    width: Math.abs(currentField.width) * pdfScale, 
+                    height: Math.abs(currentField.height) * pdfScale, 
+                    borderColor: selectedColor, 
+                    backgroundColor: `${selectedColor}10` 
+                  }} 
                 />
               )}
             </div>
@@ -364,28 +417,31 @@ const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
             {/* Text Input Modal */}
             {showTextInput && (
               <div 
-                className="absolute bg-white p-3 border rounded-lg shadow-lg z-10"
-                style={{ left: textPosition.x, top: textPosition.y }}
+                className="absolute bg-white p-3 border rounded-lg shadow-xl z-10 pointer-events-auto" 
+                style={{ 
+                  left: Math.min(textPosition.x * pdfScale + pdfPosition.x, 600), 
+                  top: Math.min(textPosition.y * pdfScale + pdfPosition.y, 900) 
+                }}
               >
-                <input
-                  type="text"
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Enter text annotation"
-                  className="border rounded px-2 py-1 text-sm w-48"
-                  autoFocus
-                  onKeyPress={(e) => e.key === 'Enter' && addTextAnnotation()}
+                <input 
+                  type="text" 
+                  value={textInput} 
+                  onChange={(e) => setTextInput(e.target.value)} 
+                  placeholder="Enter text annotation" 
+                  className="border rounded px-3 py-1 text-sm w-56 focus:ring-2 focus:ring-red-500 focus:border-red-500" 
+                  autoFocus 
+                  onKeyPress={(e) => e.key === 'Enter' && addTextAnnotation()} 
                 />
                 <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={addTextAnnotation}
-                    className="px-2 py-1 bg-primary text-white text-xs rounded"
+                  <button 
+                    onClick={addTextAnnotation} 
+                    className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
                   >
                     Add
                   </button>
-                  <button
-                    onClick={() => setShowTextInput(false)}
-                    className="px-2 py-1 bg-gray-300 text-xs rounded"
+                  <button 
+                    onClick={() => setShowTextInput(false)} 
+                    className="px-3 py-1 bg-gray-200 text-xs rounded hover:bg-gray-300"
                   >
                     Cancel
                   </button>
@@ -393,698 +449,466 @@ const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
               </div>
             )}
           </div>
-        </div>
 
-        <div className="p-4 border-t flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-600 flex items-center gap-2"
-          >
-            <Check className="w-4 h-4" />
-            Save Annotations
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Document Category Component
-const DocumentCategory = ({ type, documents, onDocumentSelect, selectedDocs }) => {
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'Invoice': return <FileText className="w-5 h-5 text-green-600" />;
-      case 'Packing List': return <FileText className="w-5 h-5 text-blue-600" />;
-      case 'Material Test Certificate': return <FileText className="w-5 h-5 text-purple-600" />;
-      case 'Certificate of Origin': return <FileText className="w-5 h-5 text-orange-600" />;
-      case 'Bill of Lading': return <FileText className="w-5 h-5 text-red-600" />;
-      default: return <FileText className="w-5 h-5 text-gray-600" />;
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow p-4">
-      <div className="flex items-center gap-3 mb-4">
-        {getTypeIcon(type)}
-        <h3 className="font-semibold text-gray-900">{type}</h3>
-        <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
-          {documents.length} examples
-        </span>
-      </div>
-      
-      <div className="grid grid-cols-1 gap-2">
-        {documents.map((doc, index) => {
-          const isSelected = selectedDocs.some(selected => selected.name === doc && selected.type === type);
-          const isFirstExample = index === 0; // First example gets PDF annotation feature
-          
-          return (
-            <div
-              key={doc}
-              className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                isSelected 
-                  ? 'border-primary bg-red-50' 
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-              onClick={() => onDocumentSelect({ name: doc, type, hasAnnotation: isFirstExample })}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-900">{doc}</span>
-                  {isFirstExample && (
-                    <span className="bg-primary text-white text-xs px-2 py-1 rounded">
-                      <Edit3 className="w-3 h-3 inline mr-1" />
-                      Annotatable
-                    </span>
-                  )}
-                </div>
-                {isSelected && <Check className="w-4 h-4 text-primary" />}
+          {/* Field Summary */}
+          {currentPageFields.length > 0 && (
+            <div className="mt-4 p-3 bg-white rounded-lg border">
+              <h4 className="font-medium text-sm text-gray-700 mb-2">
+                Annotations on Page {pageNumber} ({currentPageFields.length})
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {currentPageFields.map((field, index) => (
+                  <span 
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs text-white"
+                    style={{ backgroundColor: field.color }}
+                  >
+                    {field.label}
+                  </span>
+                ))}
               </div>
             </div>
-          );
-        })}
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t flex justify-between items-center bg-gray-50">
+          <div className="text-sm text-gray-600">
+            Total annotations: {fields.length}
+          </div>
+          <div className="flex gap-3">
+            <button 
+              onClick={onClose} 
+              className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSave} 
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-2"
+            >
+              <Check className="w-4 h-4" /> Save Annotations
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-// Main Request Flow Component
-const RequestFlow = () => {
-  const [step, setStep] = useState(1);
-  
-  // Step 1: Flow Configuration
-  const [flowName, setFlowName] = useState('');
-  const [senderEmail, setSenderEmail] = useState('');
-  const [hasEmailData, setHasEmailData] = useState(false);
-  const [emailDataDescription, setEmailDataDescription] = useState('');
-  const [flowType, setFlowType] = useState('');
-  const [principalName, setPrincipalName] = useState('');
+// Enhanced File Upload Component
+const FileUploadBox = ({ category, files, onFileChange, onRemoveFile, onOpenAnnotation }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // Step 2: Document Selection
-  const [selectedDocuments, setSelectedDocuments] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-
-  // Step 3: Annotations
-  const [showCanvas, setShowCanvas] = useState(false);
-  const [currentDocument, setCurrentDocument] = useState(null);
-  const [annotations, setAnnotations] = useState({});
-
-  // Submission
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  const handleDocumentSelect = (document) => {
-    setSelectedDocuments(prev => {
-      const exists = prev.find(doc => doc.name === document.name && doc.type === document.type);
-      if (exists) {
-        return prev.filter(doc => !(doc.name === document.name && doc.type === document.type));
-      } else {
-        return [...prev, document];
-      }
-    });
-  };
-
-  const handleFileUpload = useCallback((e) => {
+  const handleDragOver = (e) => {
     e.preventDefault();
-    const files = e.dataTransfer ? Array.from(e.dataTransfer.files) : Array.from(e.target.files);
-    const validFiles = files.filter(file => {
-      const isValidType = file.type === 'application/pdf' || file.type.startsWith('image/');
-      const isValidSize = file.size <= 10 * 1024 * 1024;
-      return isValidType && isValidSize;
-    });
-
-    setUploadedFiles(prev => [...prev, ...validFiles]);
-  }, []);
-
-  const openAnnotation = (document) => {
-    setCurrentDocument(document);
-    setShowCanvas(true);
+    setIsDragging(true);
   };
 
-  const saveAnnotations = (annotationData) => {
-    setAnnotations(prev => ({
-      ...prev,
-      [currentDocument.name]: annotationData
-    }));
+  const handleDragLeave = () => {
+    setIsDragging(false);
   };
 
-  const canProceedStep1 = flowName && senderEmail && flowType && principalName && 
-    (!hasEmailData || emailDataDescription);
-
-  const canProceedStep2 = selectedDocuments.length > 0 || uploadedFiles.length > 0;
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-
-    const payload = {
-      id: `flow-${Date.now()}`,
-      flowConfiguration: {
-        name: flowName,
-        senderEmail,
-        hasEmailData,
-        emailDataDescription: hasEmailData ? emailDataDescription : null,
-        type: flowType,
-        principal: principalName
-      },
-      selectedDocuments,
-      uploadedFiles: uploadedFiles.map(file => file.name),
-      annotations,
-      timestamp: new Date().toISOString()
-    };
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Flow request submitted:', payload);
-      
-      setShowSuccess(true);
-      setTimeout(() => {
-        // Reset all states
-        setStep(1);
-        setFlowName('');
-        setSenderEmail('');
-        setHasEmailData(false);
-        setEmailDataDescription('');
-        setFlowType('');
-        setPrincipalName('');
-        setSelectedDocuments([]);
-        setUploadedFiles([]);
-        setAnnotations({});
-        setShowSuccess(false);
-      }, 3000);
-    } catch (error) {
-      console.error('Submission error:', error);
-      alert('Failed to submit flow request. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files.length > 0) {
+      onFileChange(e.dataTransfer.files, category);
     }
   };
 
+  const handleClick = () => {
+    fileInputRef.current.click();
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Request New Flow</h1>
-        <p className="text-gray-600">Configure your document extraction flow</p>
+    <div 
+      className={`bg-white rounded-xl shadow-lg p-6 transition-all ${isDragging ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <h3 className="text-lg font-semibold text-gray-800">{category}</h3>
+      <div className="flex justify-between items-center mt-2 mb-4">
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${Math.min(files.length / 5 * 100, 100)}%` }}></div>
+        </div>
+        <span className="text-sm font-medium text-gray-600 ml-3">{files.length}/5</span>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center space-x-8 mb-8">
-        {[
-          { num: 1, title: 'Flow Setup', icon: PlusSquare },
-          { num: 2, title: 'Documents', icon: FileText },
-          { num: 3, title: 'Review', icon: Check }
-        ].map(({ num, title, icon: Icon }) => (
-          <div key={num} className="flex items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              step >= num ? 'bg-primary text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              <Icon className="w-5 h-5" />
+      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+        {files.map((file, index) => (
+          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 min-w-0">
+              <FileText className="w-5 h-5 text-red-500 flex-shrink-0"/>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                {file.annotations.length > 0 && <span className="text-xs text-green-600">{file.annotations.length} annotations</span>}
+              </div>
             </div>
-            <span className={`ml-2 font-medium ${
-              step >= num ? 'text-primary' : 'text-gray-600'
-            }`}>
-              {title}
-            </span>
-            {num < 3 && <div className="w-8 h-px bg-gray-300 ml-4" />}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => onOpenAnnotation(file, category)} 
+                className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-md"
+                disabled={!file.isUploaded}
+              >
+                <Edit3 className="w-4 h-4"/>
+              </button>
+              <button 
+                onClick={() => onRemoveFile(category, index)} 
+                className="p-1.5 text-red-500 hover:bg-red-100 rounded-md"
+              >
+                <X className="w-4 h-4"/>
+              </button>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Step 1: Flow Configuration */}
-      {step === 1 && (
-        <div className="bg-white rounded-xl shadow p-6 space-y-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Flow Configuration</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Flow Name *
-              </label>
-              <input
-                type="text"
-                value={flowName}
-                onChange={(e) => setFlowName(e.target.value)}
-                placeholder="e.g., Q3 Export Documentation"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sender Email *
-              </label>
-              <input
-                type="email"
-                value={senderEmail}
-                onChange={(e) => setSenderEmail(e.target.value)}
-                placeholder="sender@company.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="hasEmailData"
-                checked={hasEmailData}
-                onChange={(e) => setHasEmailData(e.target.checked)}
-                className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded"
-              />
-              <label htmlFor="hasEmailData" className="ml-2 text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                Extract data from email content
-              </label>
-            </div>
-
-            {hasEmailData && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Describe the email data to extract *
-                </label>
-                <textarea
-                  value={emailDataDescription}
-                  onChange={(e) => setEmailDataDescription(e.target.value)}
-                  placeholder="e.g., Extract shipment tracking numbers, delivery dates, and customer reference numbers from email body and subject line"
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Flow Type *
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="export"
-                    checked={flowType === 'export'}
-                    onChange={(e) => setFlowType(e.target.value)}
-                    className="w-4 h-4 text-primary focus:ring-primary"
-                  />
-                  <span className="ml-2 flex items-center gap-2">
-                    <ArrowUpCircle className="w-4 h-4" />
-                    Export
-                  </span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="import"
-                    checked={flowType === 'import'}
-                    onChange={(e) => setFlowType(e.target.value)}
-                    className="w-4 h-4 text-primary focus:ring-primary"
-                  />
-                  <span className="ml-2 flex items-center gap-2">
-                    <Download className="w-4 h-4" />
-                    Import
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Principal Name *
-              </label>
-              <select
-                value={principalName}
-                onChange={(e) => setPrincipalName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="">Select principal...</option>
-                {principals.map(principal => (
-                  <option key={principal} value={principal}>{principal}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => setStep(2)}
-              disabled={!canProceedStep1}
-              className={`px-6 py-2 rounded-lg font-medium ${
-                canProceedStep1
-                  ? 'bg-primary text-white hover:bg-red-600'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              Continue to Documents
-            </button>
-          </div>
+      <div 
+        className={`mt-4 cursor-pointer ${isDragging ? 'bg-blue-100' : 'bg-red-50 hover:bg-red-100'}`}
+        onClick={handleClick}
+      >
+        <div className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-red-300 rounded-lg">
+          <Upload className="w-6 h-6 text-red-500"/>
+          <span className="text-sm text-red-500 font-medium">Drag & drop files here or click to browse</span>
+          <span className="text-xs text-gray-500">Supports PDF, JPG, PNG</span>
         </div>
-      )}
-
-      {/* Step 2: Document Selection */}
-      {step === 2 && (
-        <div className="space-y-6">
-          {/* Document Categories */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Document Examples</h2>
-            <p className="text-gray-600 mb-6">
-              Choose from our document examples or upload your own files. Each document type has 5 examples available.
-            </p>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {Object.entries(sampleDocuments).map(([type, documents]) => (
-                <DocumentCategory
-                  key={type}
-                  type={type}
-                  documents={documents}
-                  onDocumentSelect={handleDocumentSelect}
-                  selectedDocs={selectedDocuments}
-                />
-              ))}
-            </div>
-
-            {selectedDocuments.length > 0 && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Selected Documents ({selectedDocuments.length})</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedDocuments.map((doc, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
-                    >
-                      {doc.name}
-                      {doc.hasAnnotation && (
-                        <Edit3 className="w-3 h-3" />
-                      )}
-                      <button
-                        onClick={() => handleDocumentSelect(doc)}
-                        className="hover:text-blue-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* File Upload Section */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Or Upload Your Own Files</h3>
-            
-            <div
-              onDrop={handleFileUpload}
-              onDragOver={(e) => e.preventDefault()}
-              className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary transition-colors"
-            >
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-lg font-medium text-gray-900 mb-2">
-                Drop files here or click to browse
-              </h4>
-              <p className="text-gray-600 mb-4">
-                Upload PDF, JPG, PNG files • Max 10MB each
-              </p>
-              <input
-                type="file"
-                multiple
-                accept=".pdf,image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="inline-flex items-center px-6 py-3 bg-primary text-white rounded-lg hover:bg-red-600 cursor-pointer transition-colors"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Choose Files
-              </label>
-            </div>
-
-            {uploadedFiles.length > 0 && (
-              <div className="mt-6">
-                <h4 className="font-medium text-gray-900 mb-3">Uploaded Files ({uploadedFiles.length})</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <FileText className="w-5 h-5 text-gray-500" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                        <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <button
-                        onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* PDF Annotation Section */}
-          {selectedDocuments.some(doc => doc.hasAnnotation) && (
-            <div className="bg-white rounded-xl shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Edit3 className="w-5 h-5" />
-                PDF Annotation Available
-              </h3>
-              <p className="text-gray-600 mb-4">
-                The following documents support PDF annotation for field marking and custom notes:
-              </p>
-              
-              <div className="space-y-3">
-                {selectedDocuments
-                  .filter(doc => doc.hasAnnotation)
-                  .map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="flex items-center gap-3">
-                        <Edit3 className="w-5 h-5 text-yellow-600" />
-                        <div>
-                          <p className="font-medium text-gray-900">{doc.name}</p>
-                          <p className="text-sm text-gray-600">{doc.type}</p>
-                        </div>
-                        {annotations[doc.name] && (
-                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                            {annotations[doc.name].length} annotations
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => openAnnotation(doc)}
-                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        {annotations[doc.name] ? 'Edit' : 'Annotate'}
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between">
-            <button
-              onClick={() => setStep(1)}
-              className="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Back
-            </button>
-            <button
-              onClick={() => setStep(3)}
-              disabled={!canProceedStep2}
-              className={`px-6 py-2 rounded-lg font-medium ${
-                canProceedStep2
-                  ? 'bg-primary text-white hover:bg-red-600'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              Continue to Review
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Review & Submit */}
-      {step === 3 && (
-        <div className="bg-white rounded-xl shadow p-6 space-y-6">
-          <h2 className="text-xl font-semibold text-gray-900">Review Flow Request</h2>
-
-          {/* Flow Configuration Summary */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="font-medium text-gray-900 mb-3">Flow Configuration</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p><strong>Flow Name:</strong> {flowName}</p>
-                <p><strong>Sender Email:</strong> {senderEmail}</p>
-                <p><strong>Principal:</strong> {principalName}</p>
-              </div>
-              <div>
-                <p><strong>Type:</strong> {flowType}</p>
-                <p className="flex items-center gap-2">
-                  <strong>Email Data Extraction:</strong> 
-                  {hasEmailData ? (
-                    <span className="text-green-600 flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Yes
-                    </span>
-                  ) : (
-                    <span className="text-gray-500">No</span>
-                  )}
-                </p>
-                {hasEmailData && (
-                  <p className="text-xs text-gray-600 mt-1">
-                    <strong>Details:</strong> {emailDataDescription}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Documents Summary */}
-          <div className="space-y-4">
-            <h3 className="font-medium text-gray-900">Selected Documents</h3>
-            
-            {selectedDocuments.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Document Examples ({selectedDocuments.length})</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {selectedDocuments.map((doc, index) => (
-                    <div key={index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-blue-900 text-sm">{doc.name}</p>
-                          <p className="text-xs text-blue-700">{doc.type}</p>
-                        </div>
-                        {doc.hasAnnotation && annotations[doc.name] && (
-                          <span className="bg-primary text-white text-xs px-2 py-1 rounded">
-                            {annotations[doc.name].length} notes
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {uploadedFiles.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Uploaded Files ({uploadedFiles.length})</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-green-600" />
-                        <div>
-                          <p className="font-medium text-green-900 text-sm">{file.name}</p>
-                          <p className="text-xs text-green-700">{(file.size / 1024).toFixed(1)} KB</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Annotations Summary */}
-            {Object.keys(annotations).length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">PDF Annotations</h4>
-                <div className="space-y-2">
-                  {Object.entries(annotations).map(([docName, docAnnotations]) => (
-                    <div key={docName} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-yellow-900 text-sm">{docName}</p>
-                        <span className="bg-yellow-200 text-yellow-800 text-xs px-2 py-1 rounded">
-                          {docAnnotations.length} annotations
-                        </span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {docAnnotations.slice(0, 3).map((annotation, i) => (
-                          <span key={i} className="text-xs bg-white px-2 py-1 rounded border">
-                            {annotation.label}
-                          </span>
-                        ))}
-                        {docAnnotations.length > 3 && (
-                          <span className="text-xs text-gray-500">
-                            +{docAnnotations.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-between">
-            <button
-              onClick={() => setStep(2)}
-              className="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={`px-8 py-3 rounded-lg font-medium flex items-center gap-2 ${
-                isSubmitting
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary text-white hover:bg-red-600'
-              }`}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  Submit Flow Request
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* PDF Canvas Modal */}
-      {showCanvas && currentDocument && (
-        <PdfCanvasModal
-          file={currentDocument}
-          existingFields={annotations[currentDocument.name] || []}
-          onSave={saveAnnotations}
-          onClose={() => setShowCanvas(false)}
-        />
-      )}
-
-      {/* Success Toast */}
-      {showSuccess && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50">
-          <div className="flex items-center gap-2">
-            <Check className="w-5 h-5" />
-            <div>
-              <p className="font-medium">Flow request submitted successfully!</p>
-              <p className="text-sm text-green-100">You'll receive a confirmation email shortly.</p>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
+      <input 
+        ref={fileInputRef}
+        type="file" 
+        multiple 
+        accept=".pdf,.jpg,.jpeg,.png" 
+        onChange={(e) => onFileChange(e.target.files, category)} 
+        className="hidden"
+      />
     </div>
   );
+};
+
+// Main Component with Enhanced UI
+const RequestFlow = () => {
+    const [step, setStep] = useState(1);
+    const [flowName, setFlowName] = useState('');
+    const [senderEmail, setSenderEmail] = useState('');
+    const [hasEmailData, setHasEmailData] = useState(false);
+    const [emailDataDescription, setEmailDataDescription] = useState('');
+    const [flowType, setFlowType] = useState('');
+    const [principalName, setPrincipalName] = useState('');
+
+    const initialCategories = {
+        'Invoice': [],
+        'Packing List': [],
+        'Material Test Certificate': [],
+        'Certificate of Origin': [],
+        'Bill of Lading': []
+    };
+    const [documentCategories, setDocumentCategories] = useState(initialCategories);
+
+    const [showCanvas, setShowCanvas] = useState(false);
+    const [currentDocument, setCurrentDocument] = useState({ file: null, category: null });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    const handleFileChange = (files, category) => {
+        if (!files || files.length === 0) return;
+        
+        const newFiles = Array.from(files).map(file => ({
+            name: file.name,
+            fileObject: file,
+            isUploaded: true,
+            annotations: []
+        }));
+
+        setDocumentCategories(prev => {
+            const updatedCategory = [...prev[category], ...newFiles];
+            return { ...prev, [category]: updatedCategory };
+        });
+    };
+
+    const removeFile = (category, index) => {
+        setDocumentCategories(prev => {
+            const updatedCategory = prev[category].filter((_, i) => i !== index);
+            return { ...prev, [category]: updatedCategory };
+        });
+    };
+
+    const openAnnotation = (file, category) => {
+        setCurrentDocument({ file, category });
+        setShowCanvas(true);
+    };
+
+    const saveAnnotations = (annotations) => {
+        const { file, category } = currentDocument;
+        setDocumentCategories(prev => {
+            const categoryFiles = prev[category];
+            const fileIndex = categoryFiles.findIndex(f => f.name === file.name);
+            const updatedFile = { ...categoryFiles[fileIndex], annotations };
+            const updatedCategoryFiles = [...categoryFiles];
+            updatedCategoryFiles[fileIndex] = updatedFile;
+            return { ...prev, [category]: updatedCategoryFiles };
+        });
+    };
+
+    const canProceedStep1 = flowName && senderEmail && flowType && principalName && (!hasEmailData || emailDataDescription);
+    const canProceedStep2 = Object.values(documentCategories).every(cat => cat.length >= 5);
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        
+        try {
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            setShowSuccess(true);
+            setTimeout(() => {
+                setStep(1);
+                setFlowName('');
+                setSenderEmail('');
+                setPrincipalName('');
+                setFlowType('');
+                setHasEmailData(false);
+                setEmailDataDescription('');
+                setDocumentCategories(initialCategories);
+                setShowSuccess(false);
+            }, 3000);
+
+        } catch (error) {
+            console.error('Submission error:', error);
+            alert(`Failed to submit flow request: ${error.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto p-8 space-y-8 font-sans">
+            <style jsx>{`
+                .animate-fade-in {
+                    animation: fadeIn 0.3s ease-in-out;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .bg-primary { background-color: #E54C37; }
+                .text-primary { color: #E54C37; }
+                .border-primary { border-color: #E54C37; }
+                .focus\:ring-primary:focus { --tw-ring-color: #E54C37; }
+                .focus\:border-primary:focus { border-color: #E54C37; }
+                .hover\:bg-red-600:hover { background-color: #dc2626; }
+            `}</style>
+
+            <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-800">Request a New Document Flow</h1>
+                <p className="text-lg text-gray-600 mt-2">A three-step process to configure your automated extraction workflow.</p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full max-w-2xl mx-auto">
+                <div className="flex justify-between items-center">
+                    {[1, 2, 3].map(num => (
+                        <React.Fragment key={num}>
+                            <div className="flex flex-col items-center">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${step >= num ? 'bg-primary border-primary text-white' : 'bg-gray-200 border-gray-300 text-gray-500'}`}>
+                                    {step > num ? <Check /> : <span className="text-xl font-bold">{num}</span>}
+                                </div>
+                                <p className={`mt-2 font-semibold text-sm ${step >= num ? 'text-primary' : 'text-gray-600'}`}>
+                                    {num === 1 ? 'Setup' : num === 2 ? 'Documents' : 'Review'}
+                                </p>
+                            </div>
+                            {num < 3 && <div className={`flex-1 h-1 mx-4 ${step > num ? 'bg-primary' : 'bg-gray-300'}`} />}
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
+
+            {/* Step 1: Flow Configuration */}
+            {step === 1 && (
+                <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 animate-fade-in">
+                    <h2 className="text-2xl font-semibold text-gray-900 border-b pb-4">Flow Configuration</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Flow Name *</label>
+                            <input 
+                                type="text" 
+                                value={flowName} 
+                                onChange={(e) => setFlowName(e.target.value)} 
+                                placeholder="e.g., Q4 Export Documents" 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Sender Email *</label>
+                            <input 
+                                type="email" 
+                                value={senderEmail} 
+                                onChange={(e) => setSenderEmail(e.target.value)} 
+                                placeholder="sender@example.com" 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Flow Type *</label>
+                            <div className="flex gap-4 mt-2">
+                                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-primary">
+                                    <input 
+                                        type="radio" 
+                                        value="export" 
+                                        checked={flowType === 'export'} 
+                                        onChange={(e) => setFlowType(e.target.value)} 
+                                        className="text-primary focus:ring-primary"
+                                    />
+                                    <ArrowUpCircle className="w-5 h-5"/> 
+                                    Export
+                                </label>
+                                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-primary">
+                                    <input 
+                                        type="radio" 
+                                        value="import" 
+                                        checked={flowType === 'import'} 
+                                        onChange={(e) => setFlowType(e.target.value)} 
+                                        className="text-primary focus:ring-primary"
+                                    />
+                                    <Download className="w-5 h-5"/> 
+                                    Import
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Principal Name *</label>
+                            <input 
+                                type="text" 
+                                value={principalName} 
+                                onChange={(e) => setPrincipalName(e.target.value)} 
+                                placeholder="e.g., Global Trade Inc." 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                            />
+                        </div>
+                    </div>
+                    <div className="pt-4 space-y-4">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={hasEmailData} 
+                                onChange={(e) => setHasEmailData(e.target.checked)} 
+                                className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                            />
+                            <Mail className="w-5 h-5 text-gray-600"/> 
+                            Extract data from email content (subject/body)
+                        </label>
+                        {hasEmailData && (
+                            <textarea 
+                                value={emailDataDescription} 
+                                onChange={(e) => setEmailDataDescription(e.target.value)} 
+                                placeholder="Describe the data to extract, e.g., 'shipment tracking numbers, container IDs, and delivery dates'." 
+                                rows={3} 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary mt-2"
+                            />
+                        )}
+                    </div>
+                    <div className="flex justify-end pt-6">
+                        <button 
+                            onClick={() => setStep(2)} 
+                            disabled={!canProceedStep1} 
+                            className="px-8 py-3 rounded-lg font-bold text-white bg-primary hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            )}
+            
+            {/* Step 2: Document Upload & Annotation */}
+            {step === 2 && (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="text-center p-6 bg-blue-50 rounded-lg border border-blue-200">
+                        <h2 className="text-xl font-semibold text-blue-900">Upload Document Examples</h2>
+                        <p className="text-blue-700 mt-1">Each category requires a minimum of 5 example documents for the AI model to learn accurately. Upload your own files for each category below.</p>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {Object.keys(documentCategories).map(category => (
+                            <FileUploadBox
+                                key={category}
+                                category={category}
+                                files={documentCategories[category]}
+                                onFileChange={(files) => handleFileChange(files, category)}
+                                onRemoveFile={removeFile}
+                                onOpenAnnotation={openAnnotation}
+                            />
+                        ))}
+                    </div>
+                    <div className="flex justify-between pt-6">
+                        <button onClick={() => setStep(1)} className="px-8 py-3 rounded-lg font-bold border border-gray-300 hover:bg-gray-100 transition-all">Back</button>
+                        <button onClick={() => setStep(3)} disabled={!canProceedStep2} className="px-8 py-3 rounded-lg font-bold text-white bg-primary hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg">Continue to Review</button>
+                    </div>
+                    {!canProceedStep2 && <p className="text-center text-red-600 font-medium text-sm">You must provide at least 5 documents for each category to continue.</p>}
+                </div>
+            )}
+
+            {/* Step 3: Review & Submit */}
+            {step === 3 && (
+                <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 animate-fade-in">
+                    <h2 className="text-2xl font-semibold text-gray-900 border-b pb-4">Review & Submit</h2>
+                    {/* Summary Sections */}
+                    <div className="space-y-6">
+                        {/* Flow Config Summary */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h3 className="font-semibold text-lg mb-3">Flow Configuration</h3>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                                <p><strong>Flow Name:</strong> {flowName}</p>
+                                <p><strong>Sender Email:</strong> {senderEmail}</p>
+                                <p><strong>Principal:</strong> {principalName}</p>
+                                <p><strong>Flow Type:</strong> <span className="capitalize">{flowType}</span></p>
+                                <p><strong>Email Extraction:</strong> {hasEmailData ? 'Yes' : 'No'}</p>
+                                {hasEmailData && <p className="col-span-2"><strong>Extraction Details:</strong> {emailDataDescription}</p>}
+                            </div>
+                        </div>
+
+                        {/* Documents Summary */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h3 className="font-semibold text-lg mb-3">Submitted Documents</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(documentCategories).map(([category, files]) => (
+                                    <div key={category}>
+                                        <h4 className="font-medium text-gray-800">{category} ({files.length})</h4>
+                                        <ul className="list-disc list-inside text-sm text-gray-700 mt-1 space-y-1">
+                                            {files.map((file, index) => (
+                                                <li key={index} className="truncate">
+                                                    {file.name}
+                                                    {file.annotations.length > 0 && <span className="ml-2 text-xs font-semibold text-green-700">({file.annotations.length} annotations)</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex justify-between pt-6">
+                        <button onClick={() => setStep(2)} className="px-8 py-3 rounded-lg font-bold border border-gray-300 hover:bg-gray-100 transition-all">Back</button>
+                        <button onClick={handleSubmit} disabled={isSubmitting} className="px-8 py-3 w-48 rounded-lg font-bold flex items-center justify-center text-white bg-primary hover:bg-red-600 disabled:bg-gray-300 transition-all shadow-md hover:shadow-lg">
+                            {isSubmitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Submit Request'}
+                        </button>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal & Toast */}
+            {showCanvas && <PdfCanvasModal file={currentDocument.file} existingFields={currentDocument.file.annotations} onSave={saveAnnotations} onClose={() => setShowCanvas(false)}/>}
+            {showSuccess && (
+                <div className="fixed top-5 right-5 bg-green-500 text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-fade-in">
+                    <Check className="w-6 h-6"/>
+                    <div>
+                        <p className="font-bold">Success!</p>
+                        <p className="text-sm">Your flow request has been submitted.</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default RequestFlow;
