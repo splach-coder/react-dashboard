@@ -1,4 +1,4 @@
-/*  UserPerformanceDashboard.jsx  */
+/* UserPerformanceDashboard.jsx  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Chart as ChartJS,
@@ -16,11 +16,9 @@ import { Line, Bar, Doughnut } from "react-chartjs-2";
 import {
   User, Clock, FileText, TrendingUp, Calendar, ChevronDown, ChevronRight,
   Activity, Building2, X, BarChart3, PieChart, Users, Zap, FileEdit,
-  FilePlus, FileMinus, Award,
+  FilePlus, FileMinus, Award, RefreshCw,
 } from "lucide-react";
-import CalendarHeatmap from "react-calendar-heatmap";
-import "react-calendar-heatmap/dist/styles.css";
-import { format, subDays, eachDayOfInterval } from "date-fns";
+import { format, subDays, eachDayOfInterval, getDay } from "date-fns";
 import { useParams, useNavigate } from "react-router-dom";
 
 ChartJS.register(
@@ -35,33 +33,9 @@ ChartJS.register(
   Legend
 );
 
-/* ---------- tiny cache helpers ---------- */
-const TTL = 30 * 60 * 1000; // 30 minutes
-const cacheKey = (u) => `userdash_${u}`;
-const readCache = (username) => {
-  try {
-    const raw = localStorage.getItem(cacheKey(username));
-    if (!raw) return null;
-    const { ts, payload } = JSON.parse(raw);
-    return Date.now() - ts < TTL ? payload : null;
-  } catch {
-    return null;
-  }
-};
-const writeCache = (username, payload) => {
-  try {
-    localStorage.setItem(
-      cacheKey(username),
-      JSON.stringify({ ts: Date.now(), payload })
-    );
-  } catch {
-    /* ignore quota errors */
-  }
-};
-
 /* ---------- transform helper ---------- */
 const transformApiData = (apiData) => {
-  if (!apiData) return null;
+  if (!apiData || !apiData.daily_metrics) return null;
 
   const dailyMetrics = apiData.daily_metrics.map((day) => ({
     date: new Date(day.date).toLocaleDateString("en-GB"),
@@ -105,14 +79,17 @@ const transformApiData = (apiData) => {
 
   const today = new Date();
   const startDate = subDays(today, 120);
-  const allDays = eachDayOfInterval({ start: startDate, end: today }).reverse();
+  const allDays = eachDayOfInterval({ start: startDate, end: today });
+  const activityDataMap = new Map(Object.entries(apiData.summary.activity_days));
+  
   const activeDays = allDays.map((date) => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    const isActive = apiData.summary.activity_days[dateStr] !== undefined;
-    const isInactive = apiData.summary.inactivity_days.includes(dateStr);
-    const count = apiData.summary.activity_days[dateStr] || 0;
-    return { date: dateStr, count, active: isActive && !isInactive };
+      const dateStr = format(date, "yyyy-MM-dd");
+      return {
+          date: dateStr,
+          count: activityDataMap.get(dateStr) || 0
+      };
   });
+
 
   const fileTypes = Object.entries(apiData.summary.file_type_counts || {}).map(
     ([type, count]) => ({ type, count })
@@ -134,10 +111,10 @@ const transformApiData = (apiData) => {
           ? apiData.summary.avg_creation_time.toFixed(2)
           : "Very Quick",
       avgFilesPerDay: apiData.summary.avg_files_per_day.toFixed(1),
-      mostProductiveDay: format(
+      mostProductiveDay: apiData.summary.most_productive_day ? format(
         new Date(apiData.summary.most_productive_day),
         "MMMM d, yyyy"
-      ),
+      ) : "N/A",
       mostActiveCompany: mostActiveCompany.company,
       mostActiveCompanyFiles: mostActiveCompany.files,
       mostActiveHour: `${apiData.summary.hour_with_most_activity}:00`,
@@ -167,12 +144,104 @@ const transformApiData = (apiData) => {
   };
 };
 
+// --- Skeleton Loading Component ---
+const SkeletonLoader = () => (
+    <div className="bg-white min-h-screen p-6">
+        <div className="animate-pulse">
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
+                    <div>
+                        <div className="h-8 w-48 bg-gray-200 rounded"></div>
+                        <div className="h-4 w-64 bg-gray-200 rounded mt-2"></div>
+                    </div>
+                </div>
+                <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                {[...Array(5)].map((_, i) => <div key={i} className="h-24 bg-gray-200 rounded-xl"></div>)}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-80 bg-gray-200 rounded-xl"></div>)}
+            </div>
+            <div className="h-96 bg-gray-200 rounded-xl"></div>
+        </div>
+    </div>
+);
+
+// --- Custom Calendar Heatmap Component ---
+const CustomCalendarHeatmap = ({ values }) => {
+    const today = new Date();
+    const startDate = subDays(today, 120);
+    const weekStartsOn = 1; // Monday
+    
+    const days = eachDayOfInterval({ start: startDate, end: today });
+    const dataMap = new Map(values.map(v => [v.date, v.count]));
+
+    const firstDay = days[0];
+    const dayOfWeek = getDay(firstDay);
+    const paddingDays = (dayOfWeek === 0 ? 6 : dayOfWeek - weekStartsOn);
+
+    const grid = Array(paddingDays).fill(null).concat(days);
+    
+    // --- UPDATED: Color scheme to match primary orange/red theme ---
+    const getHeatmapColor = (count) => {
+        if (count > 100) return "bg-red-700";
+        if (count > 50) return "bg-red-600";
+        if (count > 20) return "bg-primary"; // Main theme color
+        if (count > 0) return "bg-primary-light";
+        return "bg-gray-100";
+    };
+
+    const monthLabels = grid.reduce((acc, day, i) => {
+        if (day && day.getDate() === 1) {
+            acc.push({ label: format(day, 'MMM'), index: Math.floor(i / 7) });
+        }
+        return acc;
+    }, []);
+
+    return (
+        // --- UPDATED: Container to allow for larger size ---
+        <div className="flex space-x-4 w-full p-2">
+            <div className="flex flex-col justify-around text-sm text-gray-500 h-32">
+                <span>Mon</span>
+                <span>Wed</span>
+                <span>Fri</span>
+            </div>
+            <div className="flex-1">
+                {/* --- UPDATED: Grid layout for bigger squares --- */}
+                <div className="grid grid-flow-col grid-rows-7 gap-1.5 h-48">
+                    {grid.map((day, index) => {
+                        if (!day) return <div key={`pad-${index}`} />;
+                        const dateStr = format(day, 'yyyy-MM-dd');
+                        const count = dataMap.get(dateStr) || 0;
+                        return (
+                            <div
+                                key={dateStr}
+                                className={`w-full h-full rounded ${getHeatmapColor(count)}`}
+                                title={`${count} activities on ${format(day, 'MMM d, yyyy')}`}
+                            />
+                        );
+                    })}
+                </div>
+                <div className="relative h-4 mt-2">
+                    {monthLabels.map(({ label, index }) => (
+                        <span key={label} className="absolute text-sm text-gray-500" style={{ left: `${(index / (grid.length / 7)) * 100}%` }}>{label}</span>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 /* ---------- component ---------- */
-const UserPerformanceDashboard = ({ onClose }) => {
+const UserPerformanceDashboard = () => {
   const { username } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [expandedRows, setExpandedRows] = useState(new Set());
 
@@ -189,20 +258,17 @@ const UserPerformanceDashboard = ({ onClose }) => {
     },
   };
 
-  /* ---------- fetch + cache ---------- */
+  /* ---------- fetch logic (no frontend cache)---------- */
   const fetchUser = useCallback(
     async (force = false) => {
-      if (!force) {
-        const cached = readCache(username);
-        if (cached) {
-          setData(cached);
-          setLoading(false);
-          return;
-        }
-      }
-      try {
+      if (force) {
+        setIsRefreshing(true);
+      } else {
         setLoading(true);
-        setError(null);
+      }
+      setError(null);
+
+      try {
         const res = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/api/performance?user=${username}&code=${
             import.meta.env.VITE_API_CODE
@@ -211,12 +277,13 @@ const UserPerformanceDashboard = ({ onClose }) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const apiData = await res.json();
         const transformed = transformApiData(apiData);
+        if (!transformed) throw new Error("Invalid data received from API");
         setData(transformed);
-        writeCache(username, transformed);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     },
     [username]
@@ -232,34 +299,18 @@ const UserPerformanceDashboard = ({ onClose }) => {
     setExpandedRows(s);
   };
 
-  const getHeatmapClass = (value) => {
-    if (!value || !value.active) return "color-empty";
-    if (value.count >= 100) return "color-scale-4";
-    if (value.count >= 50) return "color-scale-3";
-    if (value.count >= 20) return "color-scale-2";
-    return "color-scale-1";
-  };
-
-  if (loading)
-    return (
-      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent mb-4"></div>
-          <p className="text-gray-600">Loading performance data...</p>
-        </div>
-      </div>
-    );
+  if (loading) return <SkeletonLoader />;
 
   if (error)
     return (
       <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="text-center max-w-md">
+        <div className="text-center max-w-md p-6 bg-white rounded-xl shadow-2xl border">
           <X className="h-12 w-12 mx-auto mb-2 text-red-500" />
-          <p className="text-lg font-semibold">Error loading dashboard</p>
+          <p className="text-lg font-semibold">Error Loading Dashboard</p>
           <p className="text-sm text-gray-600 mt-2">{error}</p>
           <button
             onClick={() => fetchUser(true)}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+            className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
           >
             Retry
           </button>
@@ -326,25 +377,36 @@ const UserPerformanceDashboard = ({ onClose }) => {
   };
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       {/* header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <User className="h-5 w-5 text-blue-600" />
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <User className="h-6 w-6 text-blue-600" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{data.user.name}</h1>
+              <p className="text-sm text-gray-500">90-Day Performance Summary</p>
             </div>
           </div>
-          <button
-            onClick={() => navigate("/statistics/performance")}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Close dashboard"
-          >
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+                onClick={() => fetchUser(true)}
+                disabled={isRefreshing}
+                className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors disabled:bg-gray-200"
+            >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+                onClick={() => navigate("/statistics/performance")}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Close dashboard"
+            >
+                <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -413,14 +475,9 @@ const UserPerformanceDashboard = ({ onClose }) => {
             <Bar data={hourlyActivityData} options={chartOptions} />
           </ChartBox>
           <ChartBox title="Recent Activity (4 months)" icon={<Calendar />}>
-            <CalendarHeatmap
-              startDate={subDays(new Date(), 120)}
-              endDate={new Date()}
-              values={data.chartData.activeDays}
-              classForValue={getHeatmapClass}
-              showWeekdayLabels
-              gutterSize={2}
-            />
+             <div className="w-full h-full flex items-center justify-center">
+                <CustomCalendarHeatmap values={data.chartData.activeDays} />
+            </div>
           </ChartBox>
         </div>
 
@@ -503,7 +560,7 @@ const DailyTable = ({ dailyMetrics, mostProductiveDay, expandedRows, toggleRow }
               <tr className="hover:bg-gray-50">
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">
                   {day.date}
-                  {day.date.includes(format(new Date(mostProductiveDay), "dd/MM/yyyy")) && (
+                  {mostProductiveDay && day.date.includes(format(new Date(mostProductiveDay), "dd/MM/yyyy")) && (
                     <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800">
                       Peak Day
                     </span>
@@ -541,22 +598,19 @@ const DailyTable = ({ dailyMetrics, mostProductiveDay, expandedRows, toggleRow }
                     {day.manualFileIds.length > 0 && (
                       <div>
                         <span className="font-medium text-blue-700">Manual Files:</span>{" "}
-                        {day.manualFileIds.slice(0, 10).join(", ")}
-                        {day.manualFileIds.length > 10 && ` …and ${day.manualFileIds.length - 10} more`}
+                        {day.manualFileIds.join(", ")}
                       </div>
                     )}
                     {day.autoFileIds.length > 0 && (
                       <div>
                         <span className="font-medium text-green-700">Auto Files:</span>{" "}
-                        {day.autoFileIds.slice(0, 10).join(", ")}
-                        {day.autoFileIds.length > 10 && ` …and ${day.autoFileIds.length - 10} more`}
+                        {day.autoFileIds.join(", ")}
                       </div>
                     )}
                     {day.modificationFileIds.length > 0 && (
                       <div>
                         <span className="font-medium text-purple-700">Modified Files:</span>{" "}
-                        {day.modificationFileIds.slice(0, 10).join(", ")}
-                        {day.modificationFileIds.length > 10 && ` …and ${day.modificationFileIds.length - 10} more`}
+                        {day.modificationFileIds.join(", ")}
                       </div>
                     )}
                   </td>

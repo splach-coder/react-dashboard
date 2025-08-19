@@ -75,7 +75,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       subtitles: [
         { label: 'Performance', path: '/statistics/performance' },
         { label: 'Compare', path: '/statistics/performance/compare' },
-        { label: 'Trends', path: '/statistics/trends' }
+        { label: 'Monthly Report', path: '/statistics/monthly-report' }
       ],
       hasSubmenu: true
     }

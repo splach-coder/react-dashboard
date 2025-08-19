@@ -8,6 +8,7 @@ import {
   Calendar,
   Award,
   AlertCircle,
+  RefreshCw, // Import the refresh icon
 } from "lucide-react";
 import { Bar } from "react-chartjs-2";
 import {
@@ -36,7 +37,7 @@ ChartJS.register(
    Simple localStorage cache helpers
    ------------------------------------------------- */
 const CACHE_KEY = "customs-dashboard-cache";
-const CACHE_TTL = 60 * 60 * 1000; // 60 minutes in ms
+const CACHE_TTL = 10 * 60 * 1000; // --- CHANGED: 10 minutes in ms ---
 
 const readCache = () => {
   try {
@@ -66,6 +67,7 @@ const CustomsDashboard = () => {
   const [teamFilter, setTeamFilter] = useState("all");
   const [sortBy, setSortBy] = useState("total");
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false); // --- NEW: State for refresh button ---
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -75,6 +77,13 @@ const CustomsDashboard = () => {
      Fetch + cache logic
      ------------------------------------------------- */
   const fetchData = useCallback(async (force = false) => {
+    if (force) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+
     // 1. Try cache unless forcing refresh
     if (!force) {
       const cached = readCache();
@@ -87,8 +96,6 @@ const CustomsDashboard = () => {
 
     // 2. Otherwise hit API
     try {
-      setLoading(true);
-      setError(null);
       const apiUrl = `${
         import.meta.env.VITE_API_BASE_URL
       }/api/performance?code=${import.meta.env.VITE_API_CODE}`;
@@ -106,6 +113,7 @@ const CustomsDashboard = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -149,7 +157,7 @@ const CustomsDashboard = () => {
   }, [data]);
 
   const dailyTotals = useMemo(() => {
-    if (!data.length) return [];
+    if (!data.length || !data[0]?.daily_file_creations) return [];
 
     const dates = Object.keys(data[0].daily_file_creations);
     return dates.map((date) => {
@@ -255,10 +263,12 @@ const CustomsDashboard = () => {
   };
 
   /* -------------------------------------------------
-     TeamTable sub-component (unchanged)
+     TeamTable sub-component
      ------------------------------------------------- */
   const TeamTable = ({ users }) => {
-    if (!data.length) return null;
+    if (!data.length || !data[0]?.daily_file_creations) {
+        return <p className="p-4 text-center text-gray-500">No data available for the table.</p>;
+    }
     const dates = Object.keys(data[0].daily_file_creations);
 
     return (
@@ -309,7 +319,7 @@ const CustomsDashboard = () => {
                   <tr
                     key={user.user}
                     onClick={() => setSelectedUser(user.user)}
-                    className="hover:bg-gray-50"
+                    className="hover:bg-gray-50 cursor-pointer"
                     style={{ borderBottom: "1px solid #edebe9" }}
                   >
                     <td
@@ -545,7 +555,7 @@ const CustomsDashboard = () => {
   }
 
   /* -------------------------------------------------
-     Main render (unchanged)
+     Main render
      ------------------------------------------------- */
   return (
     <div
@@ -554,16 +564,27 @@ const CustomsDashboard = () => {
     >
       <div className="mx-auto space-y-6">
         {/* Header */}
-        <div className="space-y-1">
-          <h1
-            className="text-2xl md:text-3xl font-semibold"
-            style={{ color: "#323130" }}
+        <div className="flex justify-between items-center">
+          <div className="space-y-1">
+            <h1
+              className="text-2xl md:text-3xl font-semibold"
+              style={{ color: "#323130" }}
+            >
+              File Creation Analytics
+            </h1>
+            <p className="text-sm md:text-base" style={{ color: "#605e5c" }}>
+              Customs Declaration Platform - Last 10 Working Days
+            </p>
+          </div>
+          {/* --- NEW: Refresh Button --- */}
+          <button
+            onClick={() => fetchData(true)}
+            disabled={isRefreshing}
+            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-[#0078d4] rounded-lg hover:bg-[#005a9e] transition-colors disabled:bg-gray-400"
           >
-            File Creation Analytics
-          </h1>
-          <p className="text-sm md:text-base" style={{ color: "#605e5c" }}>
-            Customs Declaration Platform - Last 10 Working Days
-          </p>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+          </button>
         </div>
 
         {/* Section 1: Summary Overview */}
@@ -828,11 +849,6 @@ const CustomsDashboard = () => {
           />
         </div>
       </div>
-      {selectedUser && (
-        <div className="mt-6">
-          <UserPerformanceDashboard username={selectedUser} />
-        </div>
-      )}
     </div>
   );
 };

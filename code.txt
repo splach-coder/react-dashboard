@@ -1,0 +1,5145 @@
+The following is a digest of the repository "Dashboard".
+This digest is designed to be easily parsed by Large Language Models.
+
+--- SUMMARY ---
+Repository: Dashboard
+Files Analyzed: 32
+Total Text Size: 185.02 KB
+Estimated Tokens (text only): ~45,899
+
+--- DIRECTORY STRUCTURE ---
+Dashboard/
+├── src/
+│   ├── api/
+│   │   └── api.js
+│   ├── assets/
+│   │   └── react.svg
+│   ├── components/
+│   │   ├── FlowDashboard/
+│   │   │   ├── FlowNodeUtils.jsx
+│   │   │   ├── FlowPlayground.jsx
+│   │   │   ├── FlowRunsTable.jsx
+│   │   │   ├── mockData.jsx
+│   │   │   ├── StepDetailPanel.jsx
+│   │   │   └── utils.jsx
+│   │   ├── FlowInfo/
+│   │   │   ├── StepCard.jsx
+│   │   │   └── TechStack.jsx
+│   │   └── Sidebar.jsx
+│   ├── context/
+│   │   └── AuthContext.jsx
+│   ├── layout/
+│   │   └── MainLayout.jsx
+│   ├── pages/
+│   │   ├── statistics/
+│   │   │   ├── CustomsDashboard.jsx
+│   │   │   ├── UserCompareDashboard.jsx
+│   │   │   ├── UserComparisonSelector.jsx
+│   │   │   └── UserPerformanceDashboard.jsx
+│   │   ├── FlowDashboard.jsx
+│   │   ├── FlowInfo.jsx
+│   │   ├── NotFound.jsx
+│   │   └── RequestFlow.jsx
+│   ├── utils/
+│   │   └── getUser.js
+│   ├── index.css
+│   ├── main.jsx
+│   └── router.jsx
+├── eslint.config.js
+├── package.json
+├── postcss.config.js
+├── README.md
+├── server.js
+├── tailwind.config.js
+└── vite.config.js
+
+
+--- FILE CONTENTS ---
+============================================================
+FILE: src/api/api.js
+============================================================
+const BASE_URL = "https://functionapp-python-api-atfnhbf0b7c2b0ds.westeurope-01.azurewebsites.net/api/logs";
+
+export async function getUploads(companyName = "") {
+  const url = companyName
+    ? `${BASE_URL}/${companyName}?code=${import.meta.env.VITE_API_MAIN_KEY}`
+    : `${BASE_URL}?code=${import.meta.env.VITE_API_MAIN_KEY}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+
+  const data = await res.json();
+
+  // Optional: verify data shape here to debug
+  if (!Array.isArray(data)) {
+    console.warn("API returned unexpected data format", data);
+  }
+
+  return data;
+}
+
+
+============================================================
+FILE: src/assets/react.svg
+============================================================
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+
+============================================================
+FILE: src/components/FlowDashboard/FlowNodeUtils.jsx
+============================================================
+// components/Flow/FlowNodeUtils.js
+import { CheckCircle, XCircle, Clock } from 'lucide-react';
+
+export const stepLabels = {
+  '1': '📩 Email Received',
+  '2': '🧠 Email/File Understood',
+  '3': '🛠️ Data Extracted',
+  '4': '📤 Excel File Dropped'
+};
+
+export const getStatusIcon = (status) => {
+  switch (status) {
+    case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
+    case 'failed': return <XCircle className="w-4 h-4 text-red-500" />;
+    case 'pending': return <Clock className="w-4 h-4 text-gray-400" />;
+    default: return <Clock className="w-4 h-4 text-gray-400" />;
+  }
+};
+
+export const getStatusColor = (status) => {
+  switch (status) {
+    case 'success': return 'bg-green-100 text-green-800 border-green-200';
+    case 'failed': return 'bg-red-100 text-red-800 border-red-200';
+    case 'pending': return 'bg-gray-100 text-gray-600 border-gray-200';
+    default: return 'bg-gray-100 text-gray-600 border-gray-200';
+  }
+};
+
+export const createFlowNodes = (steps) =>
+  steps.map((step, index) => ({
+    id: step.id,
+    position: { x: index * 200, y: 100 },
+    data: {
+      label: (
+        <div className="flex flex-col items-center p-2">
+          <div className="text-2xl mb-1">{stepLabels[step.id].split(' ')[0]}</div>
+          <div className="text-xs font-medium text-center">{stepLabels[step.id].substring(2)}</div>
+          <div className="mt-2">{getStatusIcon(step.status)}</div>
+        </div>
+      ),
+      step: step
+    },
+    style: {
+      background: step.status === 'success' ? '#dcfce7' : step.status === 'failed' ? '#fef2f2' : '#f9fafb',
+      border: `2px solid ${
+        step.status === 'success' ? '#16a34a' : step.status === 'failed' ? '#dc2626' : '#d1d5db'
+      }`,
+      borderRadius: '12px',
+      width: 120,
+      height: 80
+    }
+  }));
+
+export const createFlowEdges = (steps) =>
+  steps.slice(0, -1).map((_, i) => ({
+    id: `${i + 1}-${i + 2}`,
+    source: `${i + 1}`,
+    target: `${i + 2}`,
+    animated: true,
+    style: { stroke: '#6366f1', strokeWidth: 2 }
+  }));
+
+
+============================================================
+FILE: src/components/FlowDashboard/FlowPlayground.jsx
+============================================================
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import ReactFlow, { Controls, MiniMap, Background, useNodesState, useEdgesState, addEdge, Panel } from 'reactflow';
+import 'reactflow/dist/style.css';
+import { ChevronLeft, Play, Mail, Database, FileSpreadsheet } from 'lucide-react';
+
+// Define nodeTypes outside component to avoid React Flow warning
+const nodeTypes = {};
+
+// Step type mapping with proper failure detection
+const getStepInfo = (step, index) => {
+  const stepType = Object.keys(step)[0];
+  const stepData = step[stepType];
+  
+  switch (index) {
+    case 0:
+      return {
+        title: 'Email Processed',
+        subtitle: 'Outlook',
+        icon: <Mail className="w-5 h-5" />,
+        bgColor: '#ef4444', // red-500
+        iconBg: '#559CAD', // red-600
+        textColor: 'text-white',
+        failed: false // Email always succeeds per requirements
+      };
+    case 1:
+      const step2Failed = stepData?.error || stepData?.failed || stepData?.status === 'failed';
+      return {
+        title: 'Data Extracted',
+        subtitle: 'Azure Function',
+        icon: <Database className="w-5 h-5" />,
+        bgColor: step2Failed ? '#ef4444' : '#2A7F62', // red-500 or green-500
+        iconBg: step2Failed ? '#dc2626' : '#2A7F62', // red-600 or green-600
+        textColor: 'text-white',
+        failed: step2Failed
+      };
+    case 2:
+      const step3Failed = stepData?.status === 'failed' || stepData?.status === 'error';
+      return {
+        title: 'Excel Dropped on Location',
+        subtitle: 'File System',
+        icon: <FileSpreadsheet className="w-5 h-5" />,
+        bgColor: step3Failed ? '#ef4444' : '#2A7F62', // red-500 or green-500
+        iconBg: step3Failed ? '#dc2626' : '#2A7F62', // red-600 or green-600
+        textColor: 'text-white',
+        failed: step3Failed
+      };
+    default:
+      return {
+        title: 'Unknown Step',
+        subtitle: 'Unknown',
+        icon: <div className="w-5 h-5 rounded-full bg-gray-400" />,
+        bgColor: '#6b7280', // gray-500
+        iconBg: '#4b5563', // gray-600
+        textColor: 'text-white',
+        failed: false
+      };
+  }
+};
+
+// Utility functions
+const getStatusColor = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'success':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'failed':
+      return 'bg-red-100 text-red-800 border-red-200';
+    case 'running':
+      return 'bg-blue-100 text-blue-800 border-blue-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
+const getStatusIcon = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'success':
+      return <span className="text-green-500">✓</span>;
+    case 'failed':
+      return <span className="text-red-500">✗</span>;
+    case 'running':
+      return <span className="text-blue-500">↻</span>;
+    default:
+      return <span className="text-gray-500">○</span>;
+  }
+};
+
+const getStepStatus = (step) => {
+  const stepType = Object.keys(step)[0];
+  return step[stepType]?.status || 'unknown';
+};
+
+const createFlowNodes = (steps) => {
+  return steps.map((step, index) => {
+    const stepInfo = getStepInfo(step, index);
+    
+    return {
+      id: `node-${index}`,
+      type: 'default',
+      data: {
+        label: (
+          <div 
+            className="flex items-center p-3 min-w-[200px] bg-gray-200"
+           
+          >
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 text-white"
+              style={{ backgroundColor: stepInfo.iconBg }}
+            >
+              {stepInfo.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className={`font-semibold text-sm leading-tight text-${stepInfo.textColor}`}>
+                {stepInfo.title}
+              </div>
+              <div className={`text-xs opacity-80 mt-0.5 text-${stepInfo.textColor}`}>
+                {stepInfo.subtitle}
+              </div>
+            </div>
+            {stepInfo.failed && (
+              <div className="ml-2 flex-shrink-0">
+                <div className="w-2 h-2 bg-white rounded-full opacity-80"></div>
+              </div>
+            )}
+          </div>
+        ),
+        step: step,
+        failed: stepInfo.failed,
+      },
+      position: { x: index * 280, y: 0 },
+      style: {
+        background: 'transparent',
+        border: 'none',
+        padding: 0,
+        width: 'auto',
+        minWidth: '220px',
+      },
+    };
+  });
+};
+
+const createFlowEdges = (steps) => {
+  return steps.slice(0, -1).map((step, index) => {
+    const currentStepInfo = getStepInfo(step, index);
+    const nextStepInfo = getStepInfo(steps[index + 1], index + 1);
+    
+    return {
+      id: `edge-${index}-${index + 1}`,
+      source: `node-${index}`,
+      target: `node-${index + 1}`,
+      animated: getStepStatus(steps[index + 1]) === 'running',
+      style: {
+        stroke: nextStepInfo.failed ? '#ef4444' : '#355070', // red-500 or green-500
+        strokeWidth: 1,
+      },
+      type: 'smoothstep',
+    };
+  });
+};
+
+const StepDetailPanel = ({ step, onClose }) => {
+  if (!step) return null;
+
+  const stepType = Object.keys(step)[0];
+  const stepData = step[stepType];
+  const status = stepData?.status || 'unknown';
+
+  return (
+    <div className="absolute right-4 top-4 bg-white p-4 rounded-lg shadow-lg border w-80 max-h-[80vh] overflow-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold text-lg">Step Details</h3>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          ✕
+        </button>
+      </div>
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm text-gray-500">Type</p>
+          <p className="font-mono capitalize">{stepType}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Status</p>
+          <div className="flex items-center gap-2">
+            {getStatusIcon(status)}
+            <span className="capitalize">{status}</span>
+          </div>
+        </div>
+        {Object.entries(stepData).map(([key, value]) => (
+          key !== 'status' && (
+            <div key={key}>
+              <p className="text-sm text-gray-500">{key}</p>
+              <p className="whitespace-pre-wrap break-all">{JSON.stringify(value, null, 2)}</p>
+            </div>
+          )
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default function FlowPlayground({ run, onBack }) {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedStep, setSelectedStep] = useState(null);
+
+  const flowElements = useMemo(() => {
+    if (!run?.Steps?.length) return { nodes: [], edges: [] };
+    
+    const nodes = createFlowNodes(run.Steps);
+    const edges = createFlowEdges(run.Steps);
+    
+    return { nodes, edges };
+  }, [run]);
+
+  useEffect(() => {
+    setNodes(flowElements.nodes);
+    setEdges(flowElements.edges);
+  }, [flowElements, setNodes, setEdges]);
+
+  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
+  const onNodeClick = useCallback((_, node) => {
+    if (node?.data?.step) {
+      setSelectedStep(node.data.step);
+    }
+  }, []);
+
+  if (!run) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-500">No run data available</p>
+          <button 
+            onClick={onBack} 
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const overallStatus = run.finalResult?.allStepsSucceeded ? 'success' : 'failed';
+
+  return (
+    <div className="h-screen flex flex-col bg-gray-50">
+      <div className="bg-white border-b px-6 py-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <ChevronLeft className="w-5 h-5" />
+              <span>Back to Dashboard</span>
+            </button>
+            <div className="h-6 w-px bg-gray-300"></div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">{run.LogicAppName}</h1>
+              <p className="text-sm text-gray-500">Run ID: {run.runId} • {new Date(run.logicAppTimestamp).toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {getStatusIcon(overallStatus)}
+            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(overallStatus)}`}>
+              {overallStatus}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 relative">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          defaultEdgeOptions={{
+            type: 'smoothstep',
+          }}
+          connectionRadius={10}
+          nodeOrigin={[0.5, 0.5]}
+          fitView
+          className="bg-gradient-to-br from-gray-50 to-gray-100"
+        >
+          <Controls />
+          <MiniMap 
+            nodeColor={(node) => {
+              const status = node.data?.step ? getStepStatus(node.data.step) : 'unknown';
+              return status === 'success' ? '#16a34a' : 
+                     status === 'failed' ? '#dc2626' : 
+                     '#6b7280';
+            }} 
+            pannable
+            zoomable
+          />
+          <Background variant="dots" gap={25} size={1} color="#333" />
+          <Panel position="top-center" className="bg-white rounded-lg shadow-lg px-4 py-2 border">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Play className="w-4 h-4" />
+              <span>Click on any step to view details</span>
+            </div>
+          </Panel>
+        </ReactFlow>
+        
+        {selectedStep && (
+          <StepDetailPanel 
+            step={selectedStep} 
+            onClose={() => setSelectedStep(null)} 
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+============================================================
+FILE: src/components/FlowDashboard/FlowRunsTable.jsx
+============================================================
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  Search,
+  Filter,
+  CheckCircle,
+  ChevronDown,
+  Download,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
+import { getUploads } from "../../api/api";
+
+const getStatusConfig = (status) => {
+  const configs = {
+    Success: {
+      color: "text-green-700 bg-green-50 border-green-200",
+      icon: <CheckCircle className="w-3 h-3" />,
+      label: "Completed",
+    },
+    Failed: {
+      color: "text-red-700 bg-red-50 border-red-200",
+      icon: <XCircle className="w-3 h-3" />,
+      label: "Failed",
+    }
+  };
+  return configs[status] || configs.Success;
+};
+
+const getRunStatus = (run) => {
+  if (!run.finalResult?.allStepsSucceeded) {
+    return "Failed";
+  }
+  return "Success";
+};
+
+const getDuration = (run) => {
+  if (!run.logicAppTimestamp || !run.Steps || run.Steps.length === 0) {
+    return "N/A";
+  }
+  
+  const startTime = new Date(run.Steps[0].email.receivedAt);
+  const endTime = new Date(run.logicAppTimestamp);
+  
+  if (isNaN(startTime) || isNaN(endTime)) {
+    return "N/A";
+  }
+  
+  const durationMs = endTime - startTime;
+  const seconds = Math.floor(durationMs / 1000);
+  
+  return `${seconds}s`;
+};
+
+export default function FlowRunsTable({ onSelectRun }) {
+  const [flowRunsData, setFlowRunsData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProject, setSelectedProject] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [timeRange, setTimeRange] = useState("today");
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    getUploadsData();
+    
+
+    async function getUploadsData() {
+      try {
+        const data = await getUploads("");
+        console.log(data);
+        setFlowRunsData(data);
+      } catch {
+        setFlowRunsData([]);
+      }
+    }
+  }, []);
+
+  // Transform data
+  const transformedData = useMemo(() => {
+    return flowRunsData.map(run => ({
+      id: run.runId,
+      projectName: run.companyName,
+      triggerTime: run.logicAppTimestamp,
+      status: getRunStatus(run),
+      duration: getDuration(run),
+      createdBy: run.finalResult?.checker || "Unknown",
+      rawData: run
+    }));
+  }, [flowRunsData]);
+
+  // Get unique values for filters
+  const uniqueProjects = [...new Set(transformedData.map(run => run.projectName))];
+  const uniqueStatuses = [...new Set(transformedData.map(run => run.status))];
+
+  // Filter data
+  const filteredData = useMemo(() => {
+    let filtered = transformedData;
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(run =>
+        run.id.toLowerCase().includes(term) ||
+        run.projectName.toLowerCase().includes(term) ||
+        run.createdBy.toLowerCase().includes(term)
+      );
+    }
+
+    if (selectedProject) {
+      filtered = filtered.filter(run => run.projectName === selectedProject);
+    }
+
+    if (selectedStatus) {
+      filtered = filtered.filter(run => run.status === selectedStatus);
+    }
+
+    if (timeRange !== "all") {
+      const now = new Date();
+      const cutoff = new Date();
+
+      switch (timeRange) {
+        case "today":
+          cutoff.setHours(0, 0, 0, 0);
+          break;
+        case "week":
+          cutoff.setDate(now.getDate() - 7);
+          break;
+        case "month":
+          cutoff.setMonth(now.getMonth() - 1);
+          break;
+        default:
+          break;
+      }
+
+      filtered = filtered.filter(run => new Date(run.triggerTime) >= cutoff);
+    }
+
+    return filtered;
+  }, [searchTerm, selectedProject, selectedStatus, timeRange, transformedData]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedProject("");
+    setSelectedStatus("");
+    setTimeRange("today");
+    setCurrentPage(1);
+  };
+
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+    
+    if (totalPages <= 1) return null;
+
+    // Always show first page
+    buttons.push(
+      <button
+        key={1}
+        onClick={() => setCurrentPage(1)}
+        className={`px-3 py-1 text-sm font-medium rounded ${
+          currentPage === 1
+            ? "bg-[#E54C37] text-white"
+            : "text-[#6B6B6B] hover:text-[#1A1A1A] hover:bg-white"
+        }`}
+      >
+        1
+      </button>
+    );
+
+    // Show ellipsis if needed
+    if (currentPage > 3 && totalPages > maxVisibleButtons) {
+      buttons.push(
+        <span key="left-ellipsis" className="text-[#6B6B6B]">
+          ...
+        </span>
+      );
+    }
+
+    // Calculate range of pages to show
+    let startPage = Math.max(2, currentPage - 1);
+    let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    if (totalPages <= maxVisibleButtons) {
+      startPage = 2;
+      endPage = totalPages - 1;
+    }
+
+    // Add middle pages
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button
+          key={i}
+          onClick={() => setCurrentPage(i)}
+          className={`px-3 py-1 text-sm font-medium rounded ${
+            currentPage === i
+              ? "bg-[#E54C37] text-white"
+              : "text-[#6B6B6B] hover:text-[#1A1A1A] hover:bg-white"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    // Show ellipsis if needed
+    if (currentPage < totalPages - 2 && totalPages > maxVisibleButtons) {
+      buttons.push(
+        <span key="right-ellipsis" className="text-[#6B6B6B]">
+          ...
+        </span>
+      );
+    }
+
+    // Always show last page if there is one
+    if (totalPages > 1) {
+      buttons.push(
+        <button
+          key={totalPages}
+          onClick={() => setCurrentPage(totalPages)}
+          className={`px-3 py-1 text-sm font-medium rounded ${
+            currentPage === totalPages
+              ? "bg-[#E54C37] text-white"
+              : "text-[#6B6B6B] hover:text-[#1A1A1A] hover:bg-white"
+          }`}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    return buttons;
+  };
+
+  return (
+    <div className="w-full h-full bg-[#FDF9F8]">
+      <div className="bg-white shadow-sm border border-[#EAEAEA] overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[#EAEAEA]">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-[#1A1A1A]">Flow Runs</h2>
+              <p className="text-[#6B6B6B] text-sm mt-1">
+                {filteredData.length} Total • Showing {paginatedData.length} of {filteredData.length} results
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="px-6 py-4 border-b border-[#EAEAEA] bg-[#FDF9F8]">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6B6B6B] w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search runs, projects, or users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-sm border border-[#EAEAEA] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E54C37] focus:border-transparent bg-white"
+              />
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center px-3 py-2 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] border border-[#EAEAEA] rounded-lg hover:bg-white transition-colors"
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+                <ChevronDown
+                  className={`w-4 h-4 ml-2 transition-transform ${
+                    showFilters ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {(searchTerm || selectedProject || selectedStatus || timeRange !== "all") && (
+                <button
+                  onClick={handleClearFilters}
+                  className="px-3 py-2 text-sm font-medium text-[#E54C37] hover:text-[#C23D2E] transition-colors"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[#6B6B6B] mb-1">
+                  Project
+                </label>
+                <select
+                  value={selectedProject}
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-[#EAEAEA] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E54C37] focus:border-transparent bg-white"
+                >
+                  <option value="">All Projects</option>
+                  {uniqueProjects.map((project) => (
+                    <option key={project} value={project}>
+                      {project}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#6B6B6B] mb-1">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-[#EAEAEA] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E54C37] focus:border-transparent bg-white"
+                >
+                  <option value="">All Statuses</option>
+                  {uniqueStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#6B6B6B] mb-1">
+                  Time Range
+                </label>
+                <select
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-[#EAEAEA] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E54C37] focus:border-transparent bg-white"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">Last 7 Days</option>
+                  <option value="month">Last 30 Days</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-[#FDF9F8]">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Run ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Project Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Trigger Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Duration
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-[#EAEAEA]">
+              {paginatedData.length > 0 ? (
+                paginatedData.map((run) => {
+                  const statusConfig = getStatusConfig(run.status);
+                  return (
+                    <tr
+                      key={run.id}
+                      onClick={() => onSelectRun(run.rawData)}
+                      className="cursor-pointer hover:bg-[#FDF9F8] transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-2 h-2 bg-[#E54C37] rounded-full mr-3"></div>
+                          <span className="text-sm font-medium text-[#1A1A1A]">
+                            {run.id}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-[#1A1A1A] font-medium">
+                          {run.projectName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#6B6B6B]">
+                        {new Date(run.triggerTime).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusConfig.color}`}
+                        >
+                          {statusConfig.icon}
+                          <span className="ml-1">{statusConfig.label}</span>
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#6B6B6B]">
+                        {run.duration}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td className="px-6 py-16 text-center" colSpan="5">
+                    <h3 className="text-lg font-medium text-[#1A1A1A]">
+                      No runs found
+                    </h3>
+                    <p className="text-sm text-[#6B6B6B]">
+                      There are no test runs to display. Try adjusting your
+                      filters or trigger a new run.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="px-6 py-4 border-t border-[#EAEAEA] bg-[#FDF9F8]">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-[#6B6B6B]">
+              Showing {startIndex + 1} to {endIndex} of {filteredData.length} results
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              {renderPaginationButtons()}
+
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+============================================================
+FILE: src/components/FlowDashboard/mockData.jsx
+============================================================
+export const mockFlowRuns = [
+    {
+      id: 'run-001',
+      projectName: 'Email Processing Pipeline',
+      triggerTime: '2025-06-17 14:30:22',
+      status: 'success',
+      lastCompletedStep: 'Excel File Dropped',
+      steps: [
+        { id: '1', status: 'success', timestamp: '2025-06-17 14:30:22', message: 'Email received successfully from john@company.com' },
+        { id: '2', status: 'success', timestamp: '2025-06-17 14:30:45', message: 'Email content and attachments analyzed. Found 1 PDF attachment.' },
+        { id: '3', status: 'success', timestamp: '2025-06-17 14:31:12', message: 'Extracted 156 records from PDF tables successfully.' },
+        { id: '4', status: 'success', timestamp: '2025-06-17 14:31:34', message: 'Excel file generated and uploaded to shared folder.' }
+      ]
+    },
+    {
+      id: 'run-002',
+      projectName: 'Invoice Processing Flow',
+      triggerTime: '2025-06-17 13:15:33',
+      status: 'failed',
+      lastCompletedStep: 'Data Extracted',
+      steps: [
+        { id: '1', status: 'success', timestamp: '2025-06-17 13:15:33', message: 'Email received successfully from billing@vendor.com' },
+        { id: '2', status: 'success', timestamp: '2025-06-17 13:15:56', message: 'Email content analyzed. Invoice PDF detected.' },
+        { id: '3', status: 'success', timestamp: '2025-06-17 13:16:23', message: 'Invoice data extracted: Amount $2,450.00, Due: 2025-07-01' },
+        { id: '4', status: 'failed', timestamp: '2025-06-17 13:16:45', message: 'Error: Unable to connect to file server. Connection timeout after 30s.' }
+      ]
+    },
+    {
+      id: 'run-003',
+      projectName: 'Customer Data Import',
+      triggerTime: '2025-06-17 12:45:11',
+      status: 'success',
+      lastCompletedStep: 'Excel File Dropped',
+      steps: [
+        { id: '1', status: 'success', timestamp: '2025-06-17 12:45:11', message: 'Email received from customer-service@client.com' },
+        { id: '2', status: 'success', timestamp: '2025-06-17 12:45:34', message: 'Customer list CSV file identified and validated.' },
+        { id: '3', status: 'success', timestamp: '2025-06-17 12:46:01', message: 'Processed 89 customer records, normalized phone numbers and addresses.' },
+        { id: '4', status: 'success', timestamp: '2025-06-17 12:46:18', message: 'Excel file created and saved to customer database folder.' }
+      ]
+    },
+    {
+      id: 'run-004',
+      projectName: 'Report Generation',
+      triggerTime: '2025-06-17 11:20:44',
+      status: 'failed',
+      lastCompletedStep: 'Email/File Understood',
+      steps: [
+        { id: '1', status: 'success', timestamp: '2025-06-17 11:20:44', message: 'Scheduled email trigger activated.' },
+        { id: '2', status: 'failed', timestamp: '2025-06-17 11:21:12', message: 'Error: Unable to parse attachment. File appears to be corrupted.' },
+        { id: '3', status: 'pending', timestamp: null, message: 'Waiting for previous step to complete.' },
+        { id: '4', status: 'pending', timestamp: null, message: 'Waiting for previous step to complete.' }
+      ]
+    }
+  ];
+  
+
+============================================================
+FILE: src/components/FlowDashboard/StepDetailPanel.jsx
+============================================================
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getStatusIcon, stepLabels } from './utils';
+import { RefreshCw } from 'lucide-react';
+
+export default function StepDetailPanel({ step, onClose }) {
+  if (!step) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, x: 300 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 300 }}
+        className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 border-l"
+      >
+        <div className="p-6 h-full overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold">Step Details</h3>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="text-3xl">{stepLabels[step.id].split(' ')[0]}</div>
+              <div>
+                <h4 className="font-medium">{stepLabels[step.id].substring(2)}</h4>
+                <div className="flex items-center mt-1">{getStatusIcon(step.status)}<span className="ml-2 text-sm text-gray-600">{step.status}</span></div>
+              </div>
+            </div>
+
+            {step.timestamp && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h5 className="font-medium text-gray-700 mb-2">Timestamp</h5>
+                <p className="text-sm text-gray-600">{step.timestamp}</p>
+              </div>
+            )}
+
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h5 className="font-medium text-gray-700 mb-2">{step.status === 'failed' ? 'Error Details' : 'Execution Details'}</h5>
+              <p className="text-sm text-gray-600 leading-relaxed">{step.message}</p>
+            </div>
+
+            {step.status === 'failed' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h5 className="text-red-800 mb-2 flex items-center font-medium">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Retry Options
+                </h5>
+                <button className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">Retry Step</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+
+============================================================
+FILE: src/components/FlowDashboard/utils.jsx
+============================================================
+import { CheckCircle2, XCircle, Clock } from 'lucide-react';
+
+export const stepLabels = {
+  '1': 'Email Received',
+  '2': 'Content Processed',
+  '3': 'Data Extracted',
+  '4': 'Export Completed'
+};
+
+export const getStatusIcon = (status) => {
+  const iconSize = 16;
+  const baseClasses = "flex-shrink-0";
+  
+  switch (status) {
+    case 'success': 
+      return <CheckCircle2 className={`${baseClasses} text-emerald-600`} size={iconSize} />;
+    case 'failed': 
+      return <XCircle className={`${baseClasses} text-rose-600`} size={iconSize} />;
+    case 'pending': 
+    default: 
+      return <Clock className={`${baseClasses} text-slate-400`} size={iconSize} />;
+  }
+};
+
+export const getStatusColor = (status) => {
+  switch (status) {
+    case 'success': return 'text-emerald-700 border-emerald-300';
+    case 'failed': return 'text-rose-700 border-rose-300';
+    case 'pending': 
+    default: 
+      return 'text-slate-500 border-slate-300';
+  }
+};
+
+export const createFlowNodes = (steps) =>
+  steps.map((step, index) => ({
+    id: step.id,
+    type: 'default',
+    position: { x: index * 180, y: 0 },
+    data: {
+      label: (
+        <div className={`flex flex-col items-center p-3 rounded-lg w-full h-full ${getStatusColor(step.status)}`}>
+          <div className="flex items-center">
+            {getStatusIcon(step.status)}
+            <span className="text-sm font-medium">{stepLabels[step.id]}</span>
+          </div>
+          <span className="text-xs text-slate-500">
+                Step {step.id} of {steps.length}
+            </span>
+          
+        </div>
+      ),
+      step: step
+    },
+    style: {
+      background: 'white',
+      border: 'none',
+      width: 160,
+      height: 80,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+    },
+    sourcePosition: 'right',  // Connection point on right side
+    targetPosition: 'left',   // Connection point on left side
+  }));
+
+export const createFlowEdges = (steps) =>
+  steps.slice(0, -1).map((_, i) => ({
+    id: `edge-${i + 1}-${i + 2}`,
+    source: `${i + 1}`,
+    target: `${i + 2}`,
+    type: 'smoothstep',
+    style: { 
+      stroke: '#94a3b8',
+      strokeWidth: 1.5
+    },
+    markerEnd: {
+      type: 'arrowclosed',
+      color: '#94a3b8'
+    }
+  }));
+
+============================================================
+FILE: src/components/FlowInfo/StepCard.jsx
+============================================================
+import React from 'react';
+
+const StepCard = ({ icon, title, description }) => {
+  return (
+    <div className="bg-white shadow rounded-xl p-5 flex items-start space-x-4 hover:shadow-lg transition-shadow duration-200">
+      <div className="flex-shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1">
+        <h3 className="font-semibold text-gray-800 mb-2">
+          {title}
+        </h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default StepCard;
+
+============================================================
+FILE: src/components/FlowInfo/TechStack.jsx
+============================================================
+import React from 'react';
+import { Mail, Zap, Code, Brain, FileSpreadsheet } from 'lucide-react';
+
+const TechStack = () => {
+  const technologies = [
+    {
+      icon: <Mail className="w-16 h-16 text-blue-600" />,
+      name: "Outlook",
+      description: "Email Processing"
+    },
+    {
+      icon: <Zap className="w-16 h-16 text-blue-500" />,
+      name: "Azure Functions",
+      description: "Serverless Computing"
+    },
+    {
+      icon: <Code className="w-16 h-16 text-green-600" />,
+      name: "Python",
+      description: "Backend Processing"
+    },
+    {
+      icon: <Brain className="w-16 h-16 text-purple-600" />,
+      name: "OpenAI",
+      description: "AI Analysis"
+    },
+    {
+      icon: <FileSpreadsheet className="w-16 h-16 text-green-700" />,
+      name: "Excel",
+      description: "Data Output"
+    }
+  ];
+
+  return (
+    <div className="bg-gray-50 rounded-xl p-6">
+      <h2 className="text-xl font-semibold text-gray-800 text-center mb-6">
+        Technology Stack
+      </h2>
+      <div className="flex flex-wrap justify-center items-center gap-8">
+        {technologies.map((tech, index) => (
+          <div key={index} className="flex flex-col items-center text-center">
+            <div className="mb-2 p-3 bg-white rounded-lg shadow-sm">
+              {tech.icon}
+            </div>
+            <h3 className="font-medium text-gray-800 text-sm">
+              {tech.name}
+            </h3>
+            <p className="text-xs text-gray-500">
+              {tech.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default TechStack;
+
+============================================================
+FILE: src/components/Sidebar.jsx
+============================================================
+import React, { useState } from 'react';
+import { NavLink } from 'react-router-dom';
+import { 
+  Search, 
+  LayoutDashboard, 
+  Upload, 
+  Container, 
+  BarChart3, 
+  ChevronRight,
+  ChevronDown,
+  Home,
+  FileText,
+  Inbox,
+  Calendar,
+  Settings,
+  HelpCircle
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+const Sidebar = ({ collapsed, toggle }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedItems, setExpandedItems] = useState({});
+  const [hoveredItem, setHoveredItem] = useState(null);
+  const { user, loading } = useAuth();
+
+  const toggleExpanded = (itemId) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+  };
+
+  const menuItems = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      path: '/',
+      subtitles: [
+        { label: 'Overview', path: '/overview' },
+        { label: 'Analytics', path: '/analytics' },
+        { label: 'Reports', path: '/reports' }
+      ]
+    },
+    {
+      id: 'uploads',
+      label: 'Uploads',
+      icon: Upload,
+      path: '/uploads',
+      subtitles: [
+        { label: 'Flows', path: '/uploads/flows' },
+        { label: 'Informations', path: '/uploads/flows/informations' },
+        { label: 'Request Upload', path: '/uploads/flows/request' }
+      ],
+      hasSubmenu: true
+    },
+    {
+      id: 'containers',
+      label: 'Containers',
+      icon: Container,
+      path: '/containers',
+      subtitles: [
+        { label: 'Active', path: '/containers/active' },
+        { label: 'Stopped', path: '/containers/stopped' },
+        { label: 'Images', path: '/containers/images' },
+        { label: 'Networks', path: '/containers/networks' }
+      ],
+      hasSubmenu: true
+    },
+    {
+      id: 'statistics',
+      label: 'Statistics',
+      icon: BarChart3,
+      path: '/statistics',
+      subtitles: [
+        { label: 'Performance', path: '/statistics/performance' },
+        { label: 'Compare', path: '/statistics/performance/compare' },
+        { label: 'Trends', path: '/statistics/trends' }
+      ],
+      hasSubmenu: true
+    }
+  ];
+
+  const otherItems = [
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      path: '/settings',
+      subtitles: [
+        { label: 'Profile', path: '/settings/profile' },
+        { label: 'Preferences', path: '/settings/preferences' },
+        { label: 'Security', path: '/settings/security' }
+      ],
+      hasSubmenu: true
+    },
+    {
+      id: 'help',
+      label: 'Help',
+      icon: HelpCircle,
+      path: '/help',
+      subtitles: [
+        { label: 'Documentation', path: '/help/documentation' },
+        { label: 'Support', path: '/help/support' },
+        { label: 'FAQ', path: '/help/faq' }
+      ],
+      hasSubmenu: true
+    }
+  ];
+
+  const filteredMenuItems = menuItems.filter(item =>
+    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredOtherItems = otherItems.filter(item =>
+    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const renderMenuItem = (item, isInOthersSection = false) => {
+    const isExpanded = expandedItems[item.id];
+    const isHovered = hoveredItem === item.id;
+    const showSubtitles = (collapsed && isHovered) || (!collapsed && isExpanded);
+
+    return (
+      <div key={item.id} className="relative">
+        <NavLink 
+          to={item.path}
+          end
+          className={({ isActive }) => `
+            flex items-center justify-between px-3 py-2 mx-2 rounded-lg
+            transition-all duration-200 group cursor-pointer relative
+            ${isActive 
+              ? 'bg-primary text-white' 
+              : 'hover:bg-gray-50 text-text-primary'
+            }
+            ${isExpanded && !isActive ? 'bg-gray-50' : ''}
+          `}
+          onClick={(e) => {
+            if (!collapsed && item.hasSubmenu) {
+              e.preventDefault();
+              toggleExpanded(item.id);
+            }
+          }}
+          onMouseEnter={() => setHoveredItem(item.id)}
+          onMouseLeave={() => {
+            setTimeout(() => {
+              if (hoveredItem === item.id) {
+                setHoveredItem(null);
+              }
+            }, 200);
+          }}
+        >
+          {({ isActive }) => (
+            <>
+              <div className="flex items-center space-x-3">
+                <item.icon 
+                  size={20} 
+                  className={`${
+                    isActive 
+                      ? 'text-white' 
+                      : 'text-text-muted group-hover:text-primary'
+                  }`} 
+                />
+                {!collapsed && (
+                  <span className={`font-medium ${
+                    isActive 
+                      ? 'text-white' 
+                      : 'text-text-primary'
+                  }`}>
+                    {item.label}
+                  </span>
+                )}
+              </div>
+              
+              {!collapsed && item.hasSubmenu && (
+                <ChevronRight 
+                  size={16} 
+                  className={`
+                    transform transition-transform duration-200
+                    ${isExpanded ? 'rotate-90' : ''}
+                    ${isActive 
+                      ? 'text-white' 
+                      : 'text-text-muted group-hover:text-primary'
+                    }
+                  `}
+                />
+              )}
+            </>
+          )}
+        </NavLink>
+
+        {/* Expanded submenu */}
+        {!collapsed && showSubtitles && item.hasSubmenu && (
+          <div className="ml-6 mt-1 space-y-1">
+            {item.subtitles.map((subtitle, index) => (
+              <NavLink
+                key={index}
+                to={subtitle.path}
+                className={({ isActive }) => `
+                  flex items-center px-3 py-1 text-sm rounded
+                  transition-colors
+                  ${
+                    isActive
+                      ? 'text-primary font-medium'
+                      : 'text-text-muted hover:text-primary hover:bg-gray-50'
+                  }
+                `}
+              >
+                {subtitle.label}
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className={`
+      ${collapsed ? 'w-16' : 'w-64'} 
+      bg-white border-r border-border h-screen flex flex-col transition-all duration-300 fixed
+    `}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">L</span>
+          </div>
+          {!collapsed && (
+            <span className="font-bold text-text-primary text-lg">DKM</span>
+          )}
+        </div>
+        <button
+          onClick={toggle}
+          className="p-1 rounded transition-colors"
+        >
+          <ChevronRight 
+            size={20} 
+            className={`text-white transform transition-transform duration-200 bg-primary rounded-md  ${collapsed ? '' : 'rotate-180'}`} 
+          />
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="p-4 border-b border-border">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted" />
+          <input
+            type="text"
+            placeholder={collapsed ? "" : "Search"}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`
+              w-full pl-10 pr-4 py-2 border border-border rounded-lg 
+              focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+              text-sm placeholder-text-muted
+              ${collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+            `}
+          />
+        </div>
+      </div>
+
+      {/* Menu Items */}
+      <div className="flex-1 overflow-y-auto overflow-x-visible">
+        <div className="py-4">
+          {!collapsed && (
+            <div className="px-4 mb-2">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Menu
+              </span>
+            </div>
+          )}
+          <div className="space-y-1">
+            {filteredMenuItems.map(item => renderMenuItem(item))}
+          </div>
+        </div>
+
+        {/* Others Section */}
+        <div className="py-4 border-t border-border">
+          {!collapsed && (
+            <div className="px-4 mb-2">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Others
+              </span>
+            </div>
+          )}
+          <div className="space-y-1">
+            {filteredOtherItems.map(item => renderMenuItem(item, true))}
+          </div>
+        </div>
+      </div>
+
+      {/* User Profile */}
+      {!loading && user && (
+      <div className="p-4 border-t border-border">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+            <span className="text-text-muted font-medium text-sm">{user.name.split(' ')[0][0]}{user.name.split(' ')[1][0]}</span>
+          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-text-primary text-sm truncate">
+                {user.name}
+              </div>
+              <div className="text-text-muted text-xs truncate">
+                {user.email}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      )}
+    </div>
+  );
+};
+
+export default Sidebar;
+
+============================================================
+FILE: src/context/AuthContext.jsx
+============================================================
+// src/context/AuthContext.jsx
+import { createContext, useContext, useEffect, useState } from 'react';
+import { getUser } from '../utils/getUser';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getUser().then(u => {
+      setUser(u);
+      setLoading(false);
+    });
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+
+
+============================================================
+FILE: src/layout/MainLayout.jsx
+============================================================
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import Sidebar from '../components/Sidebar';
+
+export default function MainLayout() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="flex h-screen overflow-x-visible">
+      <Sidebar collapsed={collapsed} toggle={() => setCollapsed(!collapsed)} />
+      <main className={`flex-1 transition-all ease-in ${collapsed ? 'ms-20' : 'ms-72'}`}>
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+
+============================================================
+FILE: src/pages/statistics/CustomsDashboard.jsx
+============================================================
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  Search,
+  Filter,
+  TrendingUp,
+  Users,
+  FileText,
+  Calendar,
+  Award,
+  AlertCircle,
+} from "lucide-react";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import UserPerformanceDashboard from "./UserPerformanceDashboard";
+import { useNavigate } from "react-router-dom";
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+/* -------------------------------------------------
+   Simple localStorage cache helpers
+   ------------------------------------------------- */
+const CACHE_KEY = "customs-dashboard-cache";
+const CACHE_TTL = 60 * 60 * 1000; // 60 minutes in ms
+
+const readCache = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts, payload } = JSON.parse(raw);
+    return Date.now() - ts < CACHE_TTL ? payload : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCache = (payload) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), payload }));
+  } catch {
+    /* ignore localStorage quota errors */
+  }
+};
+
+/* -------------------------------------------------
+   Main component
+   ------------------------------------------------- */
+const CustomsDashboard = () => {
+  const [activeTab, setActiveTab] = useState("import");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("total");
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState([]);
+  const [error, setError] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const navigate = useNavigate();
+
+  /* -------------------------------------------------
+     Fetch + cache logic
+     ------------------------------------------------- */
+  const fetchData = useCallback(async (force = false) => {
+    // 1. Try cache unless forcing refresh
+    if (!force) {
+      const cached = readCache();
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // 2. Otherwise hit API
+    try {
+      setLoading(true);
+      setError(null);
+      const apiUrl = `${
+        import.meta.env.VITE_API_BASE_URL
+      }/api/performance?code=${import.meta.env.VITE_API_CODE}`;
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setData(result);
+      writeCache(result);
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // When user row is clicked
+  useEffect(() => {
+    if (selectedUser) {
+      navigate(`/statistics/performance/${selectedUser}`);
+    }
+  }, [selectedUser, navigate]);
+
+  /* -------------------------------------------------
+     Derived data (unchanged)
+     ------------------------------------------------- */
+  const summaryStats = useMemo(() => {
+    if (!data.length) return { importTotal: 0, exportTotal: 0 };
+
+    const importTotal = data
+      .filter((user) => user.team === "import")
+      .reduce(
+        (total, user) =>
+          total +
+          Object.values(user.daily_file_creations).reduce((a, b) => a + b, 0),
+        0
+      );
+
+    const exportTotal = data
+      .filter((user) => user.team === "export")
+      .reduce(
+        (total, user) =>
+          total +
+          Object.values(user.daily_file_creations).reduce((a, b) => a + b, 0),
+        0
+      );
+
+    return { importTotal, exportTotal };
+  }, [data]);
+
+  const dailyTotals = useMemo(() => {
+    if (!data.length) return [];
+
+    const dates = Object.keys(data[0].daily_file_creations);
+    return dates.map((date) => {
+      const importCount = data
+        .filter((user) => user.team === "import")
+        .reduce(
+          (total, user) => total + (user.daily_file_creations[date] || 0),
+          0
+        );
+
+      const exportCount = data
+        .filter((user) => user.team === "export")
+        .reduce(
+          (total, user) => total + (user.daily_file_creations[date] || 0),
+          0
+        );
+
+      return { date, import: importCount, export: exportCount };
+    });
+  }, [data]);
+
+  const chartData = {
+    labels: dailyTotals.map((item) => item.date),
+    datasets: [
+      {
+        label: "Import Team",
+        data: dailyTotals.map((item) => item.import),
+        backgroundColor: "rgba(0, 120, 212, 0.1)",
+        borderColor: "#0078d4",
+        borderWidth: 1,
+      },
+      {
+        label: "Export Team",
+        data: dailyTotals.map((item) => item.export),
+        backgroundColor: "rgba(16, 124, 16, 0.1)",
+        borderColor: "#107c10",
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+      tooltip: {
+        mode: "index",
+        intersect: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          precision: 0,
+        },
+      },
+    },
+  };
+
+  const filteredUsers = useMemo(() => {
+    if (!data.length) return [];
+
+    let filtered = data.filter((user) => {
+      const matchesSearch = user.user
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesTeam = teamFilter === "all" || user.team === teamFilter;
+      return matchesSearch && matchesTeam;
+    });
+
+    if (sortBy === "total") {
+      filtered.sort((a, b) => {
+        const totalA = Object.values(a.daily_file_creations).reduce(
+          (sum, val) => sum + val,
+          0
+        );
+        const totalB = Object.values(b.daily_file_creations).reduce(
+          (sum, val) => sum + val,
+          0
+        );
+        return totalB - totalA;
+      });
+    } else {
+      filtered.sort((a, b) => a.user.localeCompare(b.user));
+    }
+
+    return filtered;
+  }, [data, searchTerm, teamFilter, sortBy]);
+
+  const getUserStats = (user) => {
+    const dailyValues = Object.values(user.daily_file_creations);
+    const total = dailyValues.reduce((sum, val) => sum + val, 0);
+    const maxDay = Math.max(...dailyValues);
+    const maxDate = Object.keys(user.daily_file_creations).find(
+      (date) => user.daily_file_creations[date] === maxDay
+    );
+    const hasZeroActivity = dailyValues.includes(0);
+
+    return { total, maxDay, maxDate, hasZeroActivity };
+  };
+
+  /* -------------------------------------------------
+     TeamTable sub-component (unchanged)
+     ------------------------------------------------- */
+  const TeamTable = ({ users }) => {
+    if (!data.length) return null;
+    const dates = Object.keys(data[0].daily_file_creations);
+
+    return (
+      <div
+        className="bg-white"
+        style={{ borderRadius: "2px", border: "1px solid #e1e1e1" }}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <thead>
+              <tr
+                style={{
+                  backgroundColor: "#f3f2f1",
+                  borderBottom: "1px solid #e1e1e1",
+                }}
+              >
+                <th
+                  className="py-3 px-4 text-left text-sm font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 min-w-[180px]"
+                  style={{ backgroundColor: "#f3f2f1" }}
+                >
+                  User Name
+                </th>
+                {dates.map((date) => (
+                  <th
+                    key={date}
+                    className="px-3 py-3 text-center text-sm font-medium min-w-[80px]"
+                    style={{ color: "#323130" }}
+                  >
+                    {date}
+                  </th>
+                ))}
+                <th
+                  className="px-4 py-3 text-center text-sm font-medium min-w-[80px]"
+                  style={{ backgroundColor: "#faf9f8", color: "#323130" }}
+                >
+                  Total
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user, index) => {
+                const stats = getUserStats(user);
+                const teamColor =
+                  user.team === "import" ? "#0078d4" : "#107c10";
+                const teamBg = user.team === "import" ? "#deecf9" : "#dff6dd";
+
+                return (
+                  <tr
+                    key={user.user}
+                    onClick={() => setSelectedUser(user.user)}
+                    className="hover:bg-gray-50"
+                    style={{ borderBottom: "1px solid #edebe9" }}
+                  >
+                    <td
+                      className="py-3 px-4 text-sm font-medium sticky left-0 bg-white z-10"
+                      style={{ borderRight: "1px solid #e1e1e1" }}
+                    >
+                      <div className="flex items-center">
+                        <div
+                          className="h-8 w-8 flex-shrink-0 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                          style={{ backgroundColor: teamColor }}
+                        >
+                          {user.user.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="ml-3">
+                          <div
+                            className="font-medium text-sm"
+                            style={{ color: "#323130" }}
+                          >
+                            {user.user.replace(/\./g, " ")}
+                          </div>
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium"
+                            style={{
+                              backgroundColor: teamBg,
+                              color: teamColor,
+                              borderRadius: "2px",
+                            }}
+                          >
+                            {user.team.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    {dates.map((date) => {
+                      const count = user.daily_file_creations[date];
+                      const isMaxDay = count === stats.maxDay && count > 0;
+                      const isZeroDay = count === 0;
+
+                      return (
+                        <td
+                          key={date}
+                          className="px-3 py-3 text-sm text-center relative"
+                        >
+                          <div
+                            className={`inline-flex items-center justify-center h-7 w-7 text-sm font-medium relative`}
+                            style={{
+                              backgroundColor: isMaxDay
+                                ? "#fff4ce"
+                                : isZeroDay
+                                ? "#f3f2f1"
+                                : "#deecf9",
+                              color: isMaxDay
+                                ? "#8a6914"
+                                : isZeroDay
+                                ? "#605e5c"
+                                : "#0078d4",
+                              borderRadius: "2px",
+                              border: isMaxDay
+                                ? "1px solid #ffb900"
+                                : "1px solid transparent",
+                            }}
+                          >
+                            {count}
+                            {isMaxDay && (
+                              <Award className="absolute -top-1 -right-1 h-3 w-3 text-yellow-600" />
+                            )}
+                            {isZeroDay && (
+                              <AlertCircle className="absolute -top-1 -right-1 h-3 w-3 text-orange-500" />
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                    <td
+                      className="px-4 py-3 text-sm text-center font-semibold"
+                      style={{
+                        backgroundColor: "#faf9f8",
+                        borderLeft: "1px solid #e1e1e1",
+                        color: "#323130",
+                      }}
+                    >
+                      {stats.total}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot
+              style={{
+                backgroundColor: "#f3f2f1",
+                borderTop: "2px solid #e1e1e1",
+              }}
+            >
+              <tr>
+                <th
+                  className="py-3 px-4 text-left text-sm font-semibold sticky left-0 z-10"
+                  style={{ backgroundColor: "#f3f2f1", color: "#323130" }}
+                >
+                  Daily Totals
+                </th>
+                {dates.map((date) => {
+                  const dayTotal = users.reduce(
+                    (sum, user) => sum + (user.daily_file_creations[date] || 0),
+                    0
+                  );
+                  return (
+                    <td
+                      key={date}
+                      className="px-3 py-3 text-center text-sm font-semibold"
+                    >
+                      <div
+                        className="inline-flex items-center justify-center h-7 w-7 text-white text-sm font-medium"
+                        style={{
+                          backgroundColor: "#0078d4",
+                          borderRadius: "2px",
+                        }}
+                      >
+                        {dayTotal}
+                      </div>
+                    </td>
+                  );
+                })}
+                <td
+                  className="px-4 py-3 text-center text-sm font-semibold"
+                  style={{
+                    backgroundColor: "#edebe9",
+                    borderLeft: "1px solid #d2d0ce",
+                    color: "#323130",
+                  }}
+                >
+                  {users.reduce(
+                    (sum, user) => sum + getUserStats(user).total,
+                    0
+                  )}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* Legend */}
+        <div
+          className="px-4 py-3"
+          style={{ backgroundColor: "#faf9f8", borderTop: "1px solid #e1e1e1" }}
+        >
+          <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-4 w-4 rounded-sm"
+                style={{
+                  backgroundColor: "#fff4ce",
+                  border: "1px solid #ffb900",
+                }}
+              ></div>
+              <span style={{ color: "#605e5c" }}>Best performing day</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-4 w-4 rounded-sm"
+                style={{ backgroundColor: "#f3f2f1" }}
+              ></div>
+              <span style={{ color: "#605e5c" }}>No activity</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-4 w-4 rounded-sm"
+                style={{ backgroundColor: "#deecf9" }}
+              ></div>
+              <span style={{ color: "#605e5c" }}>Normal activity</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* -------------------------------------------------
+     Loading / Error states (with Refresh button)
+     ------------------------------------------------- */
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "#faf9f8" }}
+      >
+        <div className="text-center space-y-4">
+          <div
+            className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto"
+            style={{ borderColor: "#0078d4", borderTopColor: "transparent" }}
+          ></div>
+          <p className="text-base font-medium" style={{ color: "#323130" }}>
+            Loading dashboard data...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "#faf9f8" }}
+      >
+        <div
+          className="text-center max-w-md p-6 bg-white space-y-4"
+          style={{ borderRadius: "2px", border: "1px solid #d83b01" }}
+        >
+          <AlertCircle
+            className="h-8 w-8 mx-auto"
+            style={{ color: "#d83b01" }}
+          />
+          <h2 className="text-lg font-semibold" style={{ color: "#323130" }}>
+            Error Loading Data
+          </h2>
+          <p className="text-sm" style={{ color: "#605e5c" }}>
+            {error}
+          </p>
+          <button
+            onClick={() => fetchData(true)}
+            className="px-4 py-2 text-white font-medium text-sm transition-colors hover:opacity-90"
+            style={{
+              backgroundColor: "#0078d4",
+              borderRadius: "2px",
+              border: "none",
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* -------------------------------------------------
+     Main render (unchanged)
+     ------------------------------------------------- */
+  return (
+    <div
+      className="min-h-screen p-4 md:p-6"
+      style={{ backgroundColor: "#faf9f8" }}
+    >
+      <div className="mx-auto space-y-6">
+        {/* Header */}
+        <div className="space-y-1">
+          <h1
+            className="text-2xl md:text-3xl font-semibold"
+            style={{ color: "#323130" }}
+          >
+            File Creation Analytics
+          </h1>
+          <p className="text-sm md:text-base" style={{ color: "#605e5c" }}>
+            Customs Declaration Platform - Last 10 Working Days
+          </p>
+        </div>
+
+        {/* Section 1: Summary Overview */}
+        <div className="space-y-4">
+          <h2
+            className="text-lg md:text-xl font-medium"
+            style={{ color: "#323130" }}
+          >
+            Summary Overview
+          </h2>
+
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+            {/* Summary Cards */}
+            <div
+              className="bg-white p-4"
+              style={{ borderRadius: "2px", border: "1px solid #e1e1e1" }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm" style={{ color: "#605e5c" }}>
+                    Total Files Created
+                  </p>
+                  <p
+                    className="text-xl md:text-2xl font-semibold"
+                    style={{ color: "#323130" }}
+                  >
+                    {summaryStats.importTotal + summaryStats.exportTotal}
+                  </p>
+                </div>
+                <div
+                  className="p-2 rounded-sm"
+                  style={{ backgroundColor: "#deecf9" }}
+                >
+                  <FileText className="h-4 w-4" style={{ color: "#0078d4" }} />
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="bg-white p-4"
+              style={{ borderRadius: "2px", border: "1px solid #e1e1e1" }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm" style={{ color: "#0078d4" }}>
+                    Import Team
+                  </p>
+                  <p
+                    className="text-xl md:text-2xl font-semibold"
+                    style={{ color: "#0078d4" }}
+                  >
+                    {summaryStats.importTotal}
+                  </p>
+                </div>
+                <div
+                  className="p-2 rounded-sm"
+                  style={{ backgroundColor: "#dff6dd" }}
+                >
+                  <TrendingUp
+                    className="h-4 w-4"
+                    style={{ color: "#0078d4" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="bg-white p-4"
+              style={{ borderRadius: "2px", border: "1px solid #e1e1e1" }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm" style={{ color: "#107c10" }}>
+                    Export Team
+                  </p>
+                  <p
+                    className="text-xl md:text-2xl font-semibold"
+                    style={{ color: "#107c10" }}
+                  >
+                    {summaryStats.exportTotal}
+                  </p>
+                </div>
+                <div
+                  className="p-2 rounded-sm"
+                  style={{ backgroundColor: "#deecf9" }}
+                >
+                  <TrendingUp
+                    className="h-4 w-4"
+                    style={{ color: "#107c10" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Comparison Chart */}
+            <div
+              className="xl:col-span-1 bg-white p-4"
+              style={{ borderRadius: "2px", border: "1px solid #e1e1e1" }}
+            >
+              <h3
+                className="text-sm font-medium mb-3"
+                style={{ color: "#323130" }}
+              >
+                Daily Comparison
+              </h3>
+              <div className="h-32">
+                <Bar
+                  data={chartData}
+                  options={{
+                    ...chartOptions,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: false,
+                      },
+                      tooltip: {
+                        mode: "index",
+                        intersect: false,
+                      },
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: {
+                          precision: 0,
+                          font: {
+                            size: 10,
+                          },
+                        },
+                      },
+                      x: {
+                        ticks: {
+                          font: {
+                            size: 10,
+                          },
+                        },
+                      },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Filtering + Search */}
+        <div>
+          <div
+            className="bg-white p-1 md:p-3"
+            style={{ borderRadius: "2px", border: "1px solid #e1e1e1" }}
+          >
+            <div className="flex flex-col lg:flex-row gap-2">
+              <div className="flex-1">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4" style={{ color: "#605e5c" }} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search by username..."
+                    className="block w-full pl-10 pr-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2"
+                    style={{
+                      border: "1px solid #e1e1e1",
+                      borderRadius: "2px",
+                      backgroundColor: "#ffffff",
+                      color: "#323130",
+                    }}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onFocus={(e) => (e.target.style.borderColor = "#0078d4")}
+                    onBlur={(e) => (e.target.style.borderColor = "#e1e1e1")}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <select
+                  className="block w-full px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2"
+                  style={{
+                    border: "1px solid #e1e1e1",
+                    borderRadius: "2px",
+                    backgroundColor: "#ffffff",
+                    color: "#323130",
+                  }}
+                  value={teamFilter}
+                  onChange={(e) => setTeamFilter(e.target.value)}
+                  onFocus={(e) => (e.target.style.borderColor = "#0078d4")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e1e1e1")}
+                >
+                  <option value="all">All Teams</option>
+                  <option value="import">Import</option>
+                  <option value="export">Export</option>
+                </select>
+
+                <select
+                  className="block w-full px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2"
+                  style={{
+                    border: "1px solid #e1e1e1",
+                    borderRadius: "2px",
+                    backgroundColor: "#ffffff",
+                    color: "#323130",
+                  }}
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  onFocus={(e) => (e.target.style.borderColor = "#0078d4")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e1e1e1")}
+                >
+                  <option value="total">Sort by Total Files</option>
+                  <option value="name">Sort by Name</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Team Breakdown */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2
+              className="text-lg md:text-xl font-medium"
+              style={{ color: "#323130" }}
+            >
+              Team Breakdown
+            </h2>
+
+            {/* Team Tabs */}
+            <div
+              className="flex p-1"
+              style={{ backgroundColor: "#f3f2f1", borderRadius: "2px" }}
+            >
+              <button
+                className={`px-4 py-2 font-medium text-sm md:text-base transition-colors`}
+                style={{
+                  backgroundColor:
+                    activeTab === "import" ? "#0078d4" : "transparent",
+                  color: activeTab === "import" ? "#ffffff" : "#323130",
+                  borderRadius: "2px",
+                }}
+                onClick={() => setActiveTab("import")}
+              >
+                Import ({data.filter((u) => u.team === "import").length})
+              </button>
+              <button
+                className={`px-4 py-2 font-medium text-sm md:text-base transition-colors`}
+                style={{
+                  backgroundColor:
+                    activeTab === "export" ? "#107c10" : "transparent",
+                  color: activeTab === "export" ? "#ffffff" : "#323130",
+                  borderRadius: "2px",
+                }}
+                onClick={() => setActiveTab("export")}
+              >
+                Export ({data.filter((u) => u.team === "export").length})
+              </button>
+            </div>
+          </div>
+
+          {/* Team Table */}
+          <TeamTable
+            users={filteredUsers.filter((user) => user.team === activeTab)}
+          />
+        </div>
+      </div>
+      {selectedUser && (
+        <div className="mt-6">
+          <UserPerformanceDashboard username={selectedUser} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CustomsDashboard;
+
+============================================================
+FILE: src/pages/statistics/UserCompareDashboard.jsx
+============================================================
+/* UserCompareDashboard.jsx */
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
+import { Bar, Line } from "react-chartjs-2";
+import CalendarHeatmap from "react-calendar-heatmap";
+import "react-calendar-heatmap/dist/styles.css";
+import html2pdf from "html2pdf.js";
+
+import { format, subDays, eachDayOfInterval } from "date-fns";
+import { useParams, useNavigate } from "react-router-dom";
+
+import {
+  Users,
+  User,
+  TrendingUp,
+  FileText,
+  Clock,
+  Building2,
+  BarChart3,
+  PieChart,
+  Zap,
+  Activity,
+  X,
+  ArrowLeftRight,
+  FileEdit,
+  Calendar,
+  Download,
+  Printer,
+  Trophy,
+  List,
+} from "lucide-react";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend);
+
+/* --- Cache Helpers --- */
+const TTL = 30 * 60 * 1000; // 30 minutes
+const cacheKey = (u) => `userdash_${u}`;
+const readCache = (username) => {
+  try {
+    const raw = localStorage.getItem(cacheKey(username));
+    if (!raw) return null;
+    const { ts, payload } = JSON.parse(raw);
+    return Date.now() - ts < TTL ? payload : null;
+  } catch {
+    return null;
+  }
+};
+const writeCache = (username, payload) => {
+  try {
+    localStorage.setItem(cacheKey(username), JSON.stringify({ ts: Date.now(), payload }));
+  } catch (e) {
+    console.warn("Cache write failed", e);
+  }
+};
+
+/* --- Transform API Data --- */
+const transformApiData = (apiData, username) => {
+  if (!apiData || !apiData.user || !apiData.daily_metrics || !apiData.summary) return null;
+
+  const dailyMetrics = (apiData.daily_metrics || []).map((day) => ({
+    date: day.date || "N/A",
+    manual: day.manual_files_created || 0,
+    auto: day.automatic_files_created || 0,
+    modifs: day.modification_count || 0,
+    files: (day.manual_files_created || 0) + (day.automatic_files_created || 0),
+    totalFilesHandled: day.total_files_handled || 0,
+    avgTime: day.avg_creation_time != null ? day.avg_creation_time : 0,
+    manualFileIds: Array.isArray(day.manual_file_ids) ? day.manual_file_ids : [],
+    autoFileIds: Array.isArray(day.automatic_file_ids) ? day.automatic_file_ids : [],
+    modificationFileIds: Array.isArray(day.modification_file_ids) ? day.modification_file_ids : [],
+  }));
+
+  const summary = apiData.summary || {};
+
+  const companySpecialization = Object.entries(summary.company_specialization || {})
+    .map(([company, files]) => ({ company, files }))
+    .sort((a, b) => (b.files || 0) - (a.files || 0));
+
+  const mostActiveCompany = companySpecialization[0] || { company: "N/A", files: 0 };
+
+  const activityByHour = summary.activity_by_hour || {};
+  const hourLabels = Array.from({ length: 24 }, (_, i) => i).filter((h) => h >= 6 && h <= 22);
+  const hourlyActivity = hourLabels.map((h) => ({
+    hour: `${h}:00`,
+    activity: activityByHour[h] || 0,
+  }));
+
+  const today = new Date();
+  const startDate = subDays(today, 120);
+  const allDays = eachDayOfInterval({ start: startDate, end: today }).reverse();
+  const activityDays = summary.activity_days || {};
+  const inactivityDays = Array.isArray(summary.inactivity_days) ? summary.inactivity_days : [];
+
+  const activeDays = allDays.map((date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const count = activityDays[dateStr] || 0;
+    const isActive = activityDays[dateStr] !== undefined;
+    const isInactive = inactivityDays.includes(dateStr);
+    return {
+      date: dateStr,
+      count,
+      active: isActive && !isInactive,
+    };
+  });
+
+  const fileTypes = Object.entries(summary.file_type_counts || {})
+    .map(([type, count]) => ({ type, count }));
+
+  return {
+    user: {
+      id: username,
+      name: username.replace(".", " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase()),
+      team: "Export Team",
+      totalFiles: summary.total_files_handled || 0,
+      totalModifications: summary.total_modifications || 0,
+      manualPercentage: Math.round((summary.manual_vs_auto_ratio?.manual_percent || 0) * 100) / 100,
+      autoPercentage: Math.round((summary.manual_vs_auto_ratio?.automatic_percent || 0) * 100) / 100,
+      avgTime: summary.avg_creation_time != null ? (summary.avg_creation_time).toFixed(2) : "Very Quick",
+      avgFilesPerDay: (summary.avg_files_per_day || 0).toFixed(1),
+      mostProductiveDay: summary.most_productive_day || "N/A",
+      mostActiveCompany: mostActiveCompany.company,
+      mostActiveCompanyFiles: mostActiveCompany.files,
+      mostActiveHour: summary.hour_with_most_activity || "N/A",
+      daysActive: summary.days_active || 0,
+      modificationsPerFile: (summary.modifications_per_file || 0).toFixed(1),
+    },
+    dailyMetrics,
+    chartData: { companySpecialization, hourlyActivity, activeDays, fileTypes },
+  };
+};
+
+/* --- Fetch User Data --- */
+const fetchUser = async (username, force = false) => {
+  if (!force) {
+    const cached = readCache(username);
+    if (cached) return cached;
+  }
+
+  const res = await fetch(
+    `${import.meta.env.VITE_API_BASE_URL}/api/performance?user=${username}&code=${import.meta.env.VITE_API_CODE}`
+  );
+  if (!res.ok) throw new Error(`Failed to fetch ${username}`);
+  const apiData = await res.json();
+  const transformed = transformApiData(apiData, username);
+  if (!transformed) throw new Error(`Invalid data for ${username}`);
+  writeCache(username, transformed);
+  return transformed;
+};
+
+/* --- Stat Card Component --- */
+const StatCard = ({ title, value, sub, icon, color = "blue" }) => {
+  const colors = {
+    blue: "bg-blue-50 text-blue-600 border-blue-200",
+    green: "bg-green-50 text-green-600 border-green-200",
+    purple: "bg-purple-50 text-purple-600 border-purple-200",
+    orange: "bg-orange-50 text-orange-600 border-orange-200",
+    red: "bg-red-50 text-red-600 border-red-200",
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-200",
+  };
+  return (
+    <div className={`border-l-4 ${colors[color]} p-4 rounded-lg bg-white shadow-sm`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <p className="text-xl font-bold">{value}</p>
+          {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+        </div>
+        <div className={`p-2 rounded-full bg-${color}-100`}>{icon}</div>
+      </div>
+    </div>
+  );
+};
+
+/* --- ChartBox Wrapper --- */
+const ChartBox = ({ title, icon, children, className = "" }) => (
+  <div className={`bg-white p-4 rounded-xl shadow-sm border border-gray-200 ${className}`}>
+    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+      {icon}
+      {title}
+    </h3>
+    <div className="h-64">{children}</div>
+  </div>
+);
+
+/* --- Compare Dashboard Component --- */
+const UserCompareDashboard = () => {
+  const navigate = useNavigate();
+  const { user1, user2 } = useParams();
+  const dashboardRef = useRef(null);
+
+  const [data1, setData1] = useState(null);
+  const [data2, setData2] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [view, setView] = useState("compare"); // 'compare' or 'leaderboard'
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      setLoading(true);
+      try {
+        const [d1, d2] = await Promise.all([
+          fetchUser(user1).catch(() => null),
+          fetchUser(user2).catch(() => null),
+        ]);
+
+        if (!d1 || !d2) throw new Error("One or both users could not be loaded.");
+        setData1(d1);
+        setData2(d2);
+      } catch (err) {
+        setError(err.message || "Failed to load user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user1 && user2) loadUsers();
+    else setError("Missing user parameters.");
+  }, [user1, user2]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4"></div>
+          <p className="text-gray-600">Loading comparison data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+        <X className="h-12 w-12 text-red-500 mb-4" />
+        <p className="text-lg font-semibold text-red-600">Error</p>
+        <p className="text-sm text-gray-600 mt-2">{error}</p>
+        <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          Back
+        </button>
+      </div>
+    );
+  }
+
+  if (!data1 || !data2) return null;
+
+  const u1 = data1.user;
+  const u2 = data2.user;
+
+  // === Shared Metrics ===
+  const totalFilesDiff = u1.totalFiles - u2.totalFiles;
+  const modPerFileDiff = parseFloat(u1.modificationsPerFile) - parseFloat(u2.modificationsPerFile);
+
+  const overlapDays = data1.dailyMetrics
+    .map((d) => d.date)
+    .filter((date) => data2.dailyMetrics.some((d2) => d2.date === date)).length;
+
+  const sharedModifiedFiles = (data1.dailyMetrics || [])
+    .flatMap((d) => d.modificationFileIds || [])
+    .filter((id) =>
+      (data2.dailyMetrics || []).some((d2) =>
+        (d2.modificationFileIds || []).includes(id)
+      )
+    );
+
+  const peakOverlap = u1.mostActiveHour === u2.mostActiveHour;
+
+  // === Daily Productivity Chart ===
+  const allDates = [...new Set([...data1.dailyMetrics.map((d) => d.date), ...data2.dailyMetrics.map((d) => d.date)])].sort();
+  const combinedDailyFiles = allDates.map((date) => {
+    const d1 = data1.dailyMetrics.find((d) => d.date === date) || { files: 0 };
+    const d2 = data2.dailyMetrics.find((d) => d.date === date) || { files: 0 };
+    return {
+      date: date.split("-").slice(1).join("/"),
+      [u1.name]: d1.files,
+      [u2.name]: d2.files,
+    };
+  });
+
+  // === File Type Chart ===
+  const allFileTypes = [...new Set([...data1.chartData.fileTypes.map((f) => f.type), ...data2.chartData.fileTypes.map((f) => f.type)])];
+  const fileTypeData = {
+    labels: allFileTypes,
+    datasets: [
+      { label: u1.name, data: allFileTypes.map(type => data1.chartData.fileTypes.find(f => f.type === type)?.count || 0), backgroundColor: "#3b82f6" },
+      { label: u2.name, data: allFileTypes.map(type => data2.chartData.fileTypes.find(f => f.type === type)?.count || 0), backgroundColor: "#10b981" },
+    ],
+  };
+
+  // === Hourly Activity Chart ===
+  const hourlyData = {
+    labels: Array.from({ length: 24 }, (_, h) => `${h}:00`).filter((_, i) => i >= 6 && i <= 22),
+    datasets: [
+      {
+        label: u1.name,
+        data: Array.from({ length: 24 }, (_, h) => h)
+          .filter(h => h >= 6 && h <= 22)
+          .map(h => data1.chartData.hourlyActivity.find(hr => parseInt(hr.hour) === h)?.activity || 0),
+        backgroundColor: "#3b82f6",
+      },
+      {
+        label: u2.name,
+        data: Array.from({ length: 24 }, (_, h) => h)
+          .filter(h => h >= 6 && h <= 22)
+          .map(h => data2.chartData.hourlyActivity.find(hr => parseInt(hr.hour) === h)?.activity || 0),
+        backgroundColor: "#10b981",
+      },
+    ],
+  };
+
+  // === Manual vs Auto Chart ===
+  const manualAutoData = {
+    labels: ["Manual", "Automatic"],
+    datasets: [
+      { label: u1.name, data: [u1.manualPercentage, u1.autoPercentage], backgroundColor: ["#3b82f6", "#60a5fa"] },
+      { label: u2.name, data: [u2.manualPercentage, u2.autoPercentage], backgroundColor: ["#10b981", "#34d399"] },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "top" },
+      tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } },
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "#f1f5f9" } },
+    },
+  };
+
+  // === PDF Export ===
+  const exportToPDF = () => {
+    const opt = {
+      margin: 1,
+      filename: `comparison_${user1}_vs_${user2}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
+    };
+    html2pdf().from(dashboardRef.current).set(opt).save();
+  };
+
+  // === Download Shared Files as CSV ===
+  const downloadSharedFiles = () => {
+    const headers = ["File ID", "Shared By", "Date"];
+    const rows = sharedModifiedFiles.map(id => [id, `${u1.name}, ${u2.name}`, "N/A"]);
+    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `shared_files_${user1}_vs_${user2}.csv`;
+    a.click();
+  };
+
+  // === Leaderboard Data (mocked for now, can be fetched from API) ===
+  const leaderboard = [
+    { name: u1.name, files: u1.totalFiles, modifications: u1.totalModifications, avgPerDay: u1.avgFilesPerDay },
+    { name: u2.name, files: u2.totalFiles, modifications: u2.totalModifications, avgPerDay: u2.avgFilesPerDay },
+    { name: "John Doe", files: 1420, modifications: 780, avgPerDay: "13.2" },
+    { name: "Sarah Kim", files: 1300, modifications: 920, avgPerDay: "12.8" },
+    { name: "Mike Chen", files: 1100, modifications: 640, avgPerDay: "11.5" },
+  ].sort((a, b) => b.files - a.files);
+
+  return (
+    <div ref={dashboardRef} className="bg-gray-50 min-h-screen" style={{ overflow: "auto" }}>
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <ArrowLeftRight className="h-5 w-5 text-indigo-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {view === "compare" ? `Compare: ${u1.name} vs ${u2.name}` : "Team Leaderboard"}
+            </h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setView(view === "compare" ? "leaderboard" : "compare")}
+              className="flex items-center gap-1 px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 text-sm"
+            >
+              {view === "compare" ? <Trophy size={16} /> : <List size={16} />}
+              {view === "compare" ? "Leaderboard" : "Compare"}
+            </button>
+            {view === "compare" && (
+              <>
+                <button
+                  onClick={downloadSharedFiles}
+                  className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                >
+                  <Download size={16} /> CSV
+                </button>
+                <button
+                  onClick={exportToPDF}
+                  className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                >
+                  <Printer size={16} /> PDF
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="p-6 space-y-6">
+        {view === "compare" ? (
+          <>
+            {/* Top Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <StatCard
+                title="Total Files"
+                value={u1.totalFiles}
+                sub={`${totalFilesDiff > 0 ? "+" : ""}${totalFilesDiff}`}
+                icon={<FileText className="h-5 w-5 text-blue-600" />}
+                color="blue"
+              />
+              <StatCard
+                title="Avg Files/Day"
+                value={u1.avgFilesPerDay}
+                sub={`${(u1.avgFilesPerDay - u2.avgFilesPerDay).toFixed(1)}`}
+                icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+                color="green"
+              />
+              <StatCard
+                title="Modifications/File"
+                value={u1.modificationsPerFile}
+                sub={`${modPerFileDiff > 0 ? "+" : ""}${modPerFileDiff.toFixed(1)}`}
+                icon={<FileEdit className="h-5 w-5 text-purple-600" />}
+                color="purple"
+              />
+              <StatCard
+                title="Shared Active Days"
+                value={overlapDays}
+                sub={`${((overlapDays / Math.max(u1.daysActive, 1)) * 100).toFixed(0)}% of ${u1.name}`}
+                icon={<Calendar className="h-5 w-5 text-orange-600" />}
+                color="orange"
+              />
+              <StatCard
+                title="Shared Modified Files"
+                value={sharedModifiedFiles.length}
+                sub={peakOverlap ? "/Peak Hour Sync" : "/Peak Diff"}
+                icon={<Activity className="h-5 w-5 text-indigo-600" />}
+                color="indigo"
+              />
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartBox title="Daily Productivity" icon={<BarChart3 />}>
+                <Bar data={{
+                  labels: combinedDailyFiles.map(d => d.date),
+                  datasets: [
+                    { label: u1.name, data: combinedDailyFiles.map(d => d[u1.name]), backgroundColor: "#3b82f6" },
+                    { label: u2.name, data: combinedDailyFiles.map(d => d[u2.name]), backgroundColor: "#10b981" },
+                  ],
+                }} options={options} />
+              </ChartBox>
+              <ChartBox title="File Type Specialization" icon={<PieChart />}>
+                <Bar data={fileTypeData} options={{ ...options, indexAxis: "y" }} />
+              </ChartBox>
+              <ChartBox title="Hourly Activity Pattern" icon={<Clock />}>
+                <Bar data={hourlyData} options={options} />
+              </ChartBox>
+              <ChartBox title="Work Style (Manual vs Auto)" icon={<Activity />}>
+                <Bar data={manualAutoData} options={options} />
+              </ChartBox>
+            </div>
+
+            {/* Heatmaps */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartBox title={`Activity Heatmap - ${u1.name}`} icon={<Calendar />}>
+                <CalendarHeatmap
+                  startDate={subDays(new Date(), 120)}
+                  endDate={new Date()}
+                  values={data1.chartData.activeDays}
+                  classForValue={(v) => (v?.active ? "color-scale-4" : "color-empty")}
+                  showWeekdayLabels
+                  tooltipDataAttrs={(v) => ({ "data-tip": v ? `${v.count} activities` : "" })}
+                  gutterSize={2}
+                />
+              </ChartBox>
+              <ChartBox title={`Activity Heatmap - ${u2.name}`} icon={<Calendar />}>
+                <CalendarHeatmap
+                  startDate={subDays(new Date(), 120)}
+                  endDate={new Date()}
+                  values={data2.chartData.activeDays}
+                  classForValue={(v) => (v?.active ? "color-scale-3" : "color-empty")}
+                  showWeekdayLabels
+                  tooltipDataAttrs={(v) => ({ "data-tip": v ? `${v.count} activities` : "" })}
+                  gutterSize={2}
+                />
+              </ChartBox>
+            </div>
+
+            {/* Summary Insight */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-yellow-500" />
+                Key Insights
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li>🔹 <strong>{u1.name}</strong> is {u1.avgFilesPerDay > u2.avgFilesPerDay ? "more productive" : "slightly slower"} by {Math.abs(u1.avgFilesPerDay - u2.avgFilesPerDay).toFixed(1)} files/day.</li>
+                <li>🔹 <strong>{u1.name}</strong> focuses more on {u1.manualPercentage > u2.manualPercentage ? "manual work" : "automation"}.</li>
+                <li>🔹 They share <strong>{sharedModifiedFiles.length}</strong> modified files — potential for collaboration.</li>
+                <li>🔹 {peakOverlap ? "✅ Peak hours align!" : "⏰ Work peaks at different times."}</li>
+                <li>🔹 <strong>{u1.mostActiveCompany}</strong> vs <strong>{u2.mostActiveCompany}</strong> — different company focus.</li>
+              </ul>
+            </div>
+          </>
+        ) : (
+          /* Leaderboard View */
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Trophy /> Team Leaderboard</h2>
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">#</th>
+                  <th className="text-left py-2">Name</th>
+                  <th className="text-left py-2">Total Files</th>
+                  <th className="text-left py-2">Avg/Day</th>
+                  <th className="text-left py-2">Modifications</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((user, idx) => (
+                  <tr key={idx} className="border-b hover:bg-gray-50">
+                    <td className="py-3">{idx + 1}</td>
+                    <td className="font-medium">{user.name}</td>
+                    <td>{user.files}</td>
+                    <td>{user.avgPerDay}</td>
+                    <td>{user.modifications}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default UserCompareDashboard;
+
+============================================================
+FILE: src/pages/statistics/UserComparisonSelector.jsx
+============================================================
+/* UserComparisonSelector.jsx */
+import React, { useState } from "react";
+import { User, Users, ArrowLeftRight, X, AlertTriangle, Search, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+// User lists
+const IMPORT_USERS = [
+  'FADWA.ERRAZIKI', 'AYOUB.SOURISTE', 'AYMANE.BERRIOUA', 'SANA.IDRISSI', 'AMINA.SAISS',
+  'KHADIJA.OUFKIR', 'ZOHRA.HMOUDOU', 'SIMO.ONSI', 'YOUSSEF.ASSABIR', 'ABOULHASSAN.AMINA',
+  'MEHDI.OUAZIR', 'OUMAIMA.EL.OUTMANI', 'HAMZA.ALLALI', 'MUSTAPHA.BOUJALA', 'HIND.EZZAOUI'
+];
+
+const EXPORT_USERS = [
+  'IKRAM.OULHIANE', 'MOURAD.ELBAHAZ', 'MOHSINE.SABIL', 'AYA.HANNI',
+  'ZAHIRA.OUHADDA', 'CHAIMAAE.EJJARI', 'HAFIDA.BOOHADDOU', 'KHADIJA.HICHAMI', 'FATIMA.ZAHRA.BOUGSIM'
+];
+
+// Helper to get team
+const getUserTeam = (username) => {
+  if (IMPORT_USERS.includes(username)) return "Import";
+  if (EXPORT_USERS.includes(username)) return "Export";
+  return "Unknown";
+};
+
+const UserComparisonSelector = () => {
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState([]);
+
+  // Filter users based on search term
+  const filteredUsers = [...IMPORT_USERS, ...EXPORT_USERS]
+    .filter((user) => user.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter((user) => !selectedUsers.includes(user));
+
+  // Add user to selection
+  const addUser = (user) => {
+    if (selectedUsers.length < 2 && !selectedUsers.includes(user)) {
+      setSelectedUsers((prev) => [...prev, user]);
+      setSearchTerm("");
+    }
+  };
+
+  // Remove user from selection
+  const removeUser = (userToRemove) => {
+    setSelectedUsers((prev) => prev.filter((u) => u !== userToRemove));
+  };
+
+  // Start comparison
+  const startComparison = () => {
+    if (selectedUsers.length === 2) {
+      const team1 = getUserTeam(selectedUsers[0]);
+      const team2 = getUserTeam(selectedUsers[1]);
+
+      if (team1 !== team2 && team1 !== "Unknown" && team2 !== "Unknown") {
+        const proceed = window.confirm(
+          `You are comparing a ${team1} user with an ${team2} user.\n\nThis comparison may not be meaningful as they work in different teams.\n\nDo you still want to continue?`
+        );
+        if (!proceed) return;
+      }
+
+      navigate(`/statistics/performance/compare/${selectedUsers[0]}/${selectedUsers[1]}`);
+    }
+  };
+
+  // Check if mixed team comparison
+  const isMixedComparison = () => {
+    if (selectedUsers.length !== 2) return false;
+    const team1 = getUserTeam(selectedUsers[0]);
+    const team2 = getUserTeam(selectedUsers[1]);
+    return team1 !== team2 && team1 !== "Unknown" && team2 !== "Unknown";
+  };
+
+  return (
+    <div className="bg-white min-h-screen">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <ArrowLeftRight className="h-5 w-5 text-indigo-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Compare Users</h1>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="p-6 max-w-3xl mx-auto">
+        {/* Warning Banner - Mixed Teams */}
+        {isMixedComparison() && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-yellow-900">Cross-Team Comparison</h3>
+                <p className="text-sm text-yellow-800 mt-1">
+                  You are comparing an <strong>{getUserTeam(selectedUsers[0])}</strong> user with an <strong>{getUserTeam(selectedUsers[1])}</strong> user.
+                  These users belong to different teams and their metrics may not be directly comparable.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-gray-50 rounded-xl p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Select Users to Compare
+          </h2>
+
+          {/* Selected Users Pills */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {selectedUsers.map((user) => {
+              const team = getUserTeam(user);
+              return (
+                <div
+                  key={user}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+                    team === "Import"
+                      ? "bg-blue-100 text-blue-800"
+                      : team === "Export"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  <User className="h-3 w-3" />
+                  {user.replace(".", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                  <span className="text-xs ml-1 px-1.5 py-0.5 bg-white bg-opacity-30 rounded">
+                    {team}
+                  </span>
+                  <button
+                    onClick={() => removeUser(user)}
+                    className="ml-1 hover:bg-opacity-50 rounded-full p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
+            {selectedUsers.length === 0 && (
+              <p className="text-gray-500 text-sm">No users selected</p>
+            )}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 text-gray-400 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* User List */}
+          {searchTerm && (
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm max-h-60 overflow-auto">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => {
+                  const team = getUserTeam(user);
+                  return (
+                    <div
+                      key={user}
+                      onClick={() => addUser(user)}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          team === "Import" ? "bg-blue-500" : team === "Export" ? "bg-green-500" : "bg-gray-500"
+                        }`}
+                      ></div>
+                      <span className="font-medium">
+                        {user.replace(".", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </span>
+                      <span className="text-sm text-gray-500 ml-auto">{team}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="px-4 py-8 text-center text-gray-500">
+                  No users found
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Instructions */}
+          {!searchTerm && selectedUsers.length < 2 && (
+            <p className="text-gray-500 text-sm mt-2">
+              Type a name to search and add up to 2 users for comparison.
+            </p>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={startComparison}
+            disabled={selectedUsers.length !== 2}
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-lg transition ${
+              selectedUsers.length === 2
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                : "bg-gray-200 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            <ArrowRight className="h-4 w-4" />
+            Compare Users
+          </button>
+
+          {selectedUsers.length > 0 && (
+            <button
+              onClick={() => setSelectedUsers([])}
+              className="flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition"
+            >
+              <X className="h-4 w-4" />
+              Clear All
+            </button>
+          )}
+        </div>
+
+        {/* Info Box */}
+        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-blue-900">Tip</h3>
+              <p className="text-sm text-blue-800 mt-1">
+                For meaningful insights, compare users from the same team (Import vs Import or Export vs Export).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UserComparisonSelector;
+
+============================================================
+FILE: src/pages/statistics/UserPerformanceDashboard.jsx
+============================================================
+/*  UserPerformanceDashboard.jsx  */
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
+import {
+  User, Clock, FileText, TrendingUp, Calendar, ChevronDown, ChevronRight,
+  Activity, Building2, X, BarChart3, PieChart, Users, Zap, FileEdit,
+  FilePlus, FileMinus, Award,
+} from "lucide-react";
+import CalendarHeatmap from "react-calendar-heatmap";
+import "react-calendar-heatmap/dist/styles.css";
+import { format, subDays, eachDayOfInterval } from "date-fns";
+import { useParams, useNavigate } from "react-router-dom";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+/* ---------- tiny cache helpers ---------- */
+const TTL = 30 * 60 * 1000; // 30 minutes
+const cacheKey = (u) => `userdash_${u}`;
+const readCache = (username) => {
+  try {
+    const raw = localStorage.getItem(cacheKey(username));
+    if (!raw) return null;
+    const { ts, payload } = JSON.parse(raw);
+    return Date.now() - ts < TTL ? payload : null;
+  } catch {
+    return null;
+  }
+};
+const writeCache = (username, payload) => {
+  try {
+    localStorage.setItem(
+      cacheKey(username),
+      JSON.stringify({ ts: Date.now(), payload })
+    );
+  } catch {
+    /* ignore quota errors */
+  }
+};
+
+/* ---------- transform helper ---------- */
+const transformApiData = (apiData) => {
+  if (!apiData) return null;
+
+  const dailyMetrics = apiData.daily_metrics.map((day) => ({
+    date: new Date(day.date).toLocaleDateString("en-GB"),
+    manual: day.manual_files_created,
+    auto: day.automatic_files_created,
+    modifs: day.modification_count,
+    files: day.manual_files_created + day.automatic_files_created,
+    avgTime: day.avg_creation_time,
+    manualFileIds: day.manual_file_ids || [],
+    autoFileIds: day.automatic_file_ids || [],
+    modificationFileIds: day.modification_file_ids || [],
+  }));
+
+  dailyMetrics.sort(
+    (a, b) =>
+      new Date(a.date.split("/").reverse().join("-")) -
+      new Date(b.date.split("/").reverse().join("-"))
+  );
+
+  const dailyFiles = dailyMetrics.map((d) => ({
+    date: d.date.split("/").slice(0, 2).join("/"),
+    total: d.files,
+  }));
+
+  const companySpecialization = Object.entries(
+    apiData.summary.company_specialization || {}
+  )
+    .map(([company, files]) => ({ company, files }))
+    .sort((a, b) => b.files - a.files);
+
+  const mostActiveCompany = companySpecialization[0] || { company: "N/A", files: 0 };
+
+  const activityByHour = apiData.summary.activity_by_hour || {};
+  const hourLabels = Array.from({ length: 24 }, (_, i) => i).filter(
+    (h) => h >= 6 && h <= 19
+  );
+  const hourlyActivity = hourLabels.map((h) => ({
+    hour: `${h}:00`,
+    activity: activityByHour[h] || 0,
+  }));
+
+  const today = new Date();
+  const startDate = subDays(today, 120);
+  const allDays = eachDayOfInterval({ start: startDate, end: today }).reverse();
+  const activeDays = allDays.map((date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const isActive = apiData.summary.activity_days[dateStr] !== undefined;
+    const isInactive = apiData.summary.inactivity_days.includes(dateStr);
+    const count = apiData.summary.activity_days[dateStr] || 0;
+    return { date: dateStr, count, active: isActive && !isInactive };
+  });
+
+  const fileTypes = Object.entries(apiData.summary.file_type_counts || {}).map(
+    ([type, count]) => ({ type, count })
+  );
+
+  return {
+    user: {
+      name: apiData.user
+        .replace(".", " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (l) => l.toUpperCase()),
+      team: "Export Team",
+      totalFiles: apiData.summary.total_files_handled,
+      totalModifications: apiData.summary.total_modifications,
+      manualPercentage: Math.round(apiData.summary.manual_vs_auto_ratio.manual_percent),
+      autoPercentage: Math.round(apiData.summary.manual_vs_auto_ratio.automatic_percent),
+      avgTime:
+        apiData.summary?.avg_creation_time != null
+          ? apiData.summary.avg_creation_time.toFixed(2)
+          : "Very Quick",
+      avgFilesPerDay: apiData.summary.avg_files_per_day.toFixed(1),
+      mostProductiveDay: format(
+        new Date(apiData.summary.most_productive_day),
+        "MMMM d, yyyy"
+      ),
+      mostActiveCompany: mostActiveCompany.company,
+      mostActiveCompanyFiles: mostActiveCompany.files,
+      mostActiveHour: `${apiData.summary.hour_with_most_activity}:00`,
+      daysActive: apiData.summary.days_active,
+      modificationsPerFile: apiData.summary.modifications_per_file.toFixed(1),
+    },
+    dailyMetrics,
+    chartData: {
+      dailyFiles,
+      companySpecialization,
+      manualVsAuto: [
+        {
+          name: "Manual",
+          value: Math.round(apiData.summary.manual_vs_auto_ratio.manual_percent),
+          color: "#3b82f6",
+        },
+        {
+          name: "Auto",
+          value: Math.round(apiData.summary.manual_vs_auto_ratio.automatic_percent),
+          color: "#10b981",
+        },
+      ],
+      activeDays,
+      fileTypes,
+      hourlyActivity,
+    },
+  };
+};
+
+/* ---------- component ---------- */
+const UserPerformanceDashboard = ({ onClose }) => {
+  const { username } = useParams();
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(new Set());
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "top", labels: { usePointStyle: true, font: { size: 12 } } },
+      tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, grid: { color: "#f1f5f9" }, ticks: { font: { size: 11 } } },
+    },
+  };
+
+  /* ---------- fetch + cache ---------- */
+  const fetchUser = useCallback(
+    async (force = false) => {
+      if (!force) {
+        const cached = readCache(username);
+        if (cached) {
+          setData(cached);
+          setLoading(false);
+          return;
+        }
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/api/performance?user=${username}&code=${
+            import.meta.env.VITE_API_CODE
+          }`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const apiData = await res.json();
+        const transformed = transformApiData(apiData);
+        setData(transformed);
+        writeCache(username, transformed);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [username]
+  );
+
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
+
+  const toggleRow = (index) => {
+    const s = new Set(expandedRows);
+    s.has(index) ? s.delete(index) : s.add(index);
+    setExpandedRows(s);
+  };
+
+  const getHeatmapClass = (value) => {
+    if (!value || !value.active) return "color-empty";
+    if (value.count >= 100) return "color-scale-4";
+    if (value.count >= 50) return "color-scale-3";
+    if (value.count >= 20) return "color-scale-2";
+    return "color-scale-1";
+  };
+
+  if (loading)
+    return (
+      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent mb-4"></div>
+          <p className="text-gray-600">Loading performance data...</p>
+        </div>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="text-center max-w-md">
+          <X className="h-12 w-12 mx-auto mb-2 text-red-500" />
+          <p className="text-lg font-semibold">Error loading dashboard</p>
+          <p className="text-sm text-gray-600 mt-2">{error}</p>
+          <button
+            onClick={() => fetchUser(true)}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+
+  if (!data) return null;
+
+  /* ---------- charts ---------- */
+  const lineChartData = {
+    labels: data.chartData.dailyFiles.map((d) => d.date),
+    datasets: [
+      {
+        label: "Total Files Created",
+        data: data.chartData.dailyFiles.map((d) => d.total),
+        borderColor: "#3b82f6",
+        backgroundColor: "rgba(59, 130, 246, 0.1)",
+        borderWidth: 3,
+        tension: 0.3,
+        pointBackgroundColor: "#3b82f6",
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
+    ],
+  };
+
+  const doughnutChartData = {
+    labels: data.chartData.manualVsAuto.map((d) => d.name),
+    datasets: [
+      {
+        data: data.chartData.manualVsAuto.map((d) => d.value),
+        backgroundColor: ["#3b82f6", "#10b981"],
+        borderWidth: 0,
+        cutout: "70%",
+      },
+    ],
+  };
+
+  const barChartData = {
+    labels: data.chartData.companySpecialization.slice(0, 6).map((d) => d.company),
+    datasets: [
+      {
+        label: "Files Handled",
+        data: data.chartData.companySpecialization.slice(0, 6).map((d) => d.files),
+        backgroundColor: "rgba(99, 102, 241, 0.8)",
+        borderRadius: 6,
+        borderWidth: 0,
+      },
+    ],
+  };
+
+  const hourlyActivityData = {
+    labels: data.chartData.hourlyActivity.map((d) => d.hour),
+    datasets: [
+      {
+        label: "Activity Count",
+        data: data.chartData.hourlyActivity.map((d) => d.activity),
+        backgroundColor: "rgba(239, 68, 68, 0.8)",
+        borderRadius: 4,
+        borderWidth: 0,
+      },
+    ],
+  };
+
+  return (
+    <div className="bg-white min-h-screen">
+      {/* header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <User className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{data.user.name}</h1>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate("/statistics/performance")}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Close dashboard"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+      </div>
+
+      {/* body */}
+      <div className="p-6 space-y-6">
+        {/* top stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard
+            icon={<FileText />}
+            title="Total Files"
+            value={data.user.totalFiles}
+            sub={`${data.user.totalModifications} modifications`}
+            color="blue"
+          />
+          <StatCard
+            icon={<Activity />}
+            title="Work Distribution"
+            value={`${data.user.manualPercentage}% Manual`}
+            sub={`${data.user.autoPercentage}% Auto`}
+            color="green"
+          />
+          <StatCard
+            icon={<TrendingUp />}
+            title="Productivity"
+            value={`${data.user.avgFilesPerDay} files/day`}
+            sub={`${data.user.avgTime}m avg time`}
+            color="purple"
+          />
+          <StatCard
+            icon={<Zap />}
+            title="Peak Activity"
+            value={data.user.mostActiveHour}
+            sub={`${data.user.daysActive} active days`}
+            color="orange"
+          />
+          <StatCard
+            icon={<Award />}
+            title="Top Company"
+            value={data.user.mostActiveCompany}
+            sub={`${data.user.mostActiveCompanyFiles} files`}
+            color="indigo"
+          />
+        </div>
+
+        {/* charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <ChartBox title="Daily Performance" icon={<BarChart3 />}>
+            <Line data={lineChartData} options={chartOptions} />
+          </ChartBox>
+          <ChartBox title="Work Distribution" icon={<PieChart />}>
+            <Doughnut
+              data={doughnutChartData}
+              options={{
+                ...chartOptions,
+                plugins: { ...chartOptions.plugins, legend: { position: "right" } },
+              }}
+            />
+          </ChartBox>
+          <ChartBox title="Top Companies" icon={<Users />}>
+            <Bar data={barChartData} options={chartOptions} />
+          </ChartBox>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ChartBox title="Hourly Activity Pattern" icon={<Clock />}>
+            <Bar data={hourlyActivityData} options={chartOptions} />
+          </ChartBox>
+          <ChartBox title="Recent Activity (4 months)" icon={<Calendar />}>
+            <CalendarHeatmap
+              startDate={subDays(new Date(), 120)}
+              endDate={new Date()}
+              values={data.chartData.activeDays}
+              classForValue={getHeatmapClass}
+              showWeekdayLabels
+              gutterSize={2}
+            />
+          </ChartBox>
+        </div>
+
+        {/* daily table */}
+        <DailyTable
+          dailyMetrics={data.dailyMetrics}
+          mostProductiveDay={data.user.mostProductiveDay}
+          expandedRows={expandedRows}
+          toggleRow={toggleRow}
+        />
+
+        {/* file types */}
+        <FileTypes fileTypes={data.chartData.fileTypes} />
+      </div>
+    </div>
+  );
+};
+
+/* ---------- small reusable bits ---------- */
+const StatCard = ({ icon, title, value, sub, color }) => {
+  const colors = {
+    blue: "bg-blue-50 text-blue-600",
+    green: "bg-green-50 text-green-600",
+    purple: "bg-purple-50 text-purple-600",
+    orange: "bg-orange-50 text-orange-600",
+    indigo: "bg-indigo-50 text-indigo-600",
+  };
+  return (
+    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start space-x-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colors[color]}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-sm text-gray-600">{title}</p>
+          <p className="text-xl font-bold text-gray-900">{value}</p>
+          <p className="text-xs text-gray-500 mt-1">{sub}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ChartBox = ({ title, icon, children }) => (
+  <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+    <div className="flex items-center space-x-2 mb-4">
+      {icon}
+      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+    </div>
+    <div className="h-64">{children}</div>
+  </div>
+);
+
+const DailyTable = ({ dailyMetrics, mostProductiveDay, expandedRows, toggleRow }) => (
+  <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="p-6 border-b border-gray-200">
+      <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+        <FilePlus /> Recent Activity Details
+      </h2>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead className="bg-gray-50">
+          <tr>
+            {["Date", "Manual", "Auto", "Modified", "Total", "Avg Time", ""].map(
+              (h) => (
+                <th
+                  key={h}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                >
+                  {h}
+                </th>
+              )
+            )}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {dailyMetrics.map((day, idx) => (
+            <React.Fragment key={idx}>
+              <tr className="hover:bg-gray-50">
+                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  {day.date}
+                  {day.date.includes(format(new Date(mostProductiveDay), "dd/MM/yyyy")) && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                      Peak Day
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">
+                    {day.manual}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs bg-green-100 text-green-800">
+                    {day.auto}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
+                    {day.modifs}
+                  </span>
+                </td>
+                <td className="px-6 py-4 font-bold">{day.files}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">{day.avgTime}m</td>
+                <td>
+                  <button
+                    onClick={() => toggleRow(idx)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    {expandedRows.has(idx) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </button>
+                </td>
+              </tr>
+              {expandedRows.has(idx) && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 bg-gray-50 text-sm text-gray-600 space-y-2">
+                    {day.manualFileIds.length > 0 && (
+                      <div>
+                        <span className="font-medium text-blue-700">Manual Files:</span>{" "}
+                        {day.manualFileIds.join(", ")}
+                      </div>
+                    )}
+                    {day.autoFileIds.length > 0 && (
+                      <div>
+                        <span className="font-medium text-green-700">Auto Files:</span>{" "}
+                        {day.autoFileIds.join(", ")}
+                      </div>
+                    )}
+                    {day.modificationFileIds.length > 0 && (
+                      <div>
+                        <span className="font-medium text-purple-700">Modified Files:</span>{" "}
+                        {day.modificationFileIds.join(", ")}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const FileTypes = ({ fileTypes }) => (
+  <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+    <h3 className="text-lg font-semibold text-gray-900 mb-4">File Types Distribution</h3>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {fileTypes.map((ft, idx) => (
+        <div key={idx} className="flex flex-col items-center p-4 bg-gray-50 rounded-lg">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+            <FileText className="h-5 w-5 text-blue-600" />
+          </div>
+          <span className="text-sm font-medium text-gray-700">{ft.type}</span>
+          <span className="text-lg font-bold text-blue-600">{ft.count}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+export default UserPerformanceDashboard;
+
+============================================================
+FILE: src/pages/FlowDashboard.jsx
+============================================================
+import React, { useState } from 'react';
+import FlowRunsTable from '../components/FlowDashboard/FlowRunsTable';
+import FlowPlayground from '../components/FlowDashboard/FlowPlayground';
+
+export default function FlowDashboard() {
+  const [selectedRun, setSelectedRun] = useState(null);
+
+  if (selectedRun) {
+    return <FlowPlayground run={selectedRun} onBack={() => setSelectedRun(null)} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Flow Monitoring Dashboard</h1>
+          <p className="text-gray-600">Track and monitor your automation workflow executions</p>
+        </div>
+        <FlowRunsTable onSelectRun={setSelectedRun} />
+      </div>
+    </div>
+  );
+}
+
+
+============================================================
+FILE: src/pages/FlowInfo.jsx
+============================================================
+import React from 'react';
+import { Mail, Zap, Brain, FileSpreadsheet } from 'lucide-react';
+import StepCard from '../components/FlowInfo/StepCard';
+import TechStack from '../components/FlowInfo/TechStack';
+
+const FlowInfo = () => {
+  const steps = [
+    {
+      icon: <Mail className="w-12 h-12 text-blue-500" />,
+      title: "Email arrives",
+      description: "Logic Apps continuously monitor Outlook for incoming emails with attachments. When a new email is detected, the system automatically triggers the processing workflow."
+    },
+    {
+      icon: <Zap className="w-12 h-12 text-green-500" />,
+      title: "Azure Function receives & decodes file",
+      description: "The Azure Function securely receives the email attachment, validates the file format, and prepares it for AI processing using advanced decoding algorithms."
+    },
+    {
+      icon: <Brain className="w-12 h-12 text-purple-500" />,
+      title: "AI extraction",
+      description: "Multiple AI services work together: Tesseract for OCR text recognition, OpenAI GPT-4V for intelligent content analysis, and Azure Form Recognizer for structured data extraction."
+    },
+    {
+      icon: <FileSpreadsheet className="w-12 h-12 text-red-500" />,
+      title: "Excel file generated & emailed",
+      description: "The extracted data is formatted into a structured Excel file with proper headers, validation, and formatting, then automatically emailed back to the requestor."
+    }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      {/* Hero Section */}
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">
+          DKM Automation Explained
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Discover how our intelligent document processing system transforms email attachments 
+          into structured data using cutting-edge AI technology.
+        </p>
+      </div>
+
+      {/* Steps Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {steps.map((step, index) => (
+          <StepCard
+            key={index}
+            icon={step.icon}
+            title={`${index + 1}. ${step.title}`}
+            description={step.description}
+          />
+        ))}
+      </div>
+
+      {/* Tech Stack */}
+      <TechStack />
+
+    
+    </div>
+  );
+};
+
+export default FlowInfo;
+
+============================================================
+FILE: src/pages/NotFound.jsx
+============================================================
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
+
+export default function FlowDashboard() {
+  return (
+    <div className="flex flex-col items-center justify-center h-screen text-center p-6 bg-gray-50">
+    <AlertCircle className="text-red-500 w-16 h-16 mb-4" />
+    <h1 className="text-4xl font-bold text-gray-800 mb-2">404 – Page Not Found</h1>
+    <p className="text-gray-600 mb-6">
+      The page you're looking for doesn't exist or has been moved.
+    </p>
+    <Link to="/" className="text-white bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 transition">
+      Go back to Dashboard
+    </Link>
+  </div>
+  );
+}
+
+
+============================================================
+FILE: src/pages/RequestFlow.jsx
+============================================================
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Upload, X, FileText, Check, Mail, Download, ArrowUpCircle, Edit3, Square, Type, Palette, PlusSquare, Hand } from 'lucide-react';
+
+// Enhanced PDF Canvas Modal with better viewing and interaction
+const PdfCanvasModal = ({ file, onSave, onClose, existingFields = [] }) => {
+  const [fields, setFields] = useState(existingFields);
+  const [drawingMode, setDrawingMode] = useState(null); // null, 'rectangle', 'text', 'move'
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentField, setCurrentField] = useState(null);
+  const [fieldLabel, setFieldLabel] = useState('');
+  const [selectedColor, setSelectedColor] = useState('#E54C37');
+  const [textInput, setTextInput] = useState('');
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pdfError, setPdfError] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfScale, setPdfScale] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startDragPos, setStartDragPos] = useState({ x: 0, y: 0 });
+  const [pdfPosition, setPdfPosition] = useState({ x: 0, y: 0 });
+  
+  const canvasRef = useRef(null);
+  const pdfContainerRef = useRef(null);
+  const pdfViewerRef = useRef(null);
+
+  const colors = ['#E54C37', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#6B7280'];
+
+  // Load PDF using URL.createObjectURL
+  useEffect(() => {
+    if (file.fileObject) {
+      try {
+        const url = URL.createObjectURL(file.fileObject);
+        setPdfUrl(url);
+        setPdfLoading(false);
+        return () => URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error creating PDF URL:', error);
+        setPdfError('Failed to load PDF file');
+        setPdfLoading(false);
+      }
+    }
+  }, [file.fileObject]);
+
+  // Improved PDF rendering with better controls
+  const renderPdfViewer = () => {
+    if (pdfLoading) {
+      return (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading PDF...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (pdfError) {
+      return (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <div className="text-center text-red-600">
+            <X className="w-12 h-12 mx-auto mb-2" />
+            <p>{pdfError}</p>
+            <p className="text-sm text-gray-500 mt-2">Please try uploading a different PDF file.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        ref={pdfViewerRef}
+        className="absolute inset-0 bg-white overflow-hidden"
+        style={{
+          transform: `translate(${pdfPosition.x}px, ${pdfPosition.y}px) scale(${pdfScale})`,
+          transformOrigin: 'top left',
+          width: '100%',
+          height: '100%'
+        }}
+      >
+        <iframe
+          src={`${pdfUrl}#page=${pageNumber}`}
+          className="w-full h-full border-0"
+          title="PDF Viewer"
+          style={{ pointerEvents: drawingMode === 'move' ? 'auto' : 'none' }}
+        />
+      </div>
+    );
+  };
+
+  const getMousePosition = (e) => {
+    const rect = pdfContainerRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    
+    // Adjust for PDF position and scale
+    return {
+      x: (e.clientX - rect.left - pdfPosition.x) / pdfScale,
+      y: (e.clientY - rect.top - pdfPosition.y) / pdfScale
+    };
+  };
+
+  const handleMouseDown = (e) => {
+    const { x, y } = getMousePosition(e);
+
+    if (drawingMode === 'move') {
+      setIsDragging(true);
+      setStartDragPos({ x, y });
+      return;
+    }
+
+    if (drawingMode === 'text') {
+      setTextPosition({ x, y });
+      setShowTextInput(true);
+      return;
+    }
+
+    if (drawingMode === 'rectangle' && !fieldLabel.trim()) {
+      alert('Please enter a field label first');
+      return;
+    }
+
+    if (drawingMode === 'rectangle') {
+      setIsDrawing(true);
+      setCurrentField({
+        x,
+        y,
+        width: 0,
+        height: 0,
+        label: fieldLabel.trim(),
+        type: 'rectangle',
+        color: selectedColor
+      });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    const { x, y } = getMousePosition(e);
+
+    if (isDragging && drawingMode === 'move') {
+      setPdfPosition(prev => ({
+        x: prev.x + (x - startDragPos.x),
+        y: prev.y + (y - startDragPos.y)
+      }));
+      return;
+    }
+
+    if (isDrawing && currentField && drawingMode === 'rectangle') {
+      setCurrentField(prev => ({
+        ...prev,
+        width: x - prev.x,
+        height: y - prev.y
+      }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      return;
+    }
+
+    if (isDrawing && currentField && Math.abs(currentField.width) > 10 && Math.abs(currentField.height) > 10) {
+      const normalizedField = {
+        ...currentField,
+        x: currentField.width < 0 ? currentField.x + currentField.width : currentField.x,
+        y: currentField.height < 0 ? currentField.y + currentField.height : currentField.y,
+        width: Math.abs(currentField.width),
+        height: Math.abs(currentField.height),
+        page: pageNumber - 1
+      };
+      
+      setFields(prev => [...prev, normalizedField]);
+      setFieldLabel('');
+    }
+    setIsDrawing(false);
+    setCurrentField(null);
+  };
+
+  const addTextAnnotation = () => {
+    if (textInput.trim()) {
+      setFields(prev => [...prev, {
+        x: textPosition.x,
+        y: textPosition.y,
+        label: textInput.trim(),
+        type: 'text',
+        color: selectedColor,
+        page: pageNumber - 1
+      }]);
+      setTextInput('');
+      setShowTextInput(false);
+    }
+  };
+
+  const removeField = (fieldToRemove) => {
+    setFields(prev => prev.filter(field => field !== fieldToRemove));
+  };
+
+  const handleSave = () => {
+    onSave(fields);
+    onClose();
+  };
+
+  const resetView = () => {
+    setPdfPosition({ x: 0, y: 0 });
+    setPdfScale(1);
+  };
+
+  const currentPageFields = fields.filter(field => field.page === pageNumber - 1);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] flex flex-col">
+        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+          <h2 className="text-xl font-semibold">Annotate Document: {file.name}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Enhanced Toolbar */}
+        <div className="p-3 border-b bg-gray-50">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Tool:</span>
+              <button 
+                onClick={() => setDrawingMode('move')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm ${
+                  drawingMode === 'move' ? 'bg-blue-500 text-white' : 'bg-white border hover:bg-gray-50'
+                }`}
+              >
+                <Hand className="w-4 h-4" /> Move
+              </button>
+              <button 
+                onClick={() => setDrawingMode('rectangle')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm ${
+                  drawingMode === 'rectangle' ? 'bg-red-500 text-white' : 'bg-white border hover:bg-gray-50'
+                }`}
+              >
+                <Square className="w-4 h-4" /> Rectangle
+              </button>
+              <button 
+                onClick={() => setDrawingMode('text')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm ${
+                  drawingMode === 'text' ? 'bg-red-500 text-white' : 'bg-white border hover:bg-gray-50'
+                }`}
+              >
+                <Type className="w-4 h-4" /> Text
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Palette className="w-5 h-5 text-gray-600" />
+              {colors.map(color => (
+                <button 
+                  key={color} 
+                  onClick={() => setSelectedColor(color)} 
+                  className={`w-6 h-6 rounded-full border-2 ${
+                    selectedColor === color ? 'border-gray-800' : 'border-gray-300'
+                  }`} 
+                  style={{ backgroundColor: color }} 
+                />
+              ))}
+            </div>
+            
+            {drawingMode === 'rectangle' && (
+              <input 
+                type="text" 
+                value={fieldLabel} 
+                onChange={(e) => setFieldLabel(e.target.value)} 
+                placeholder="Enter field label..." 
+                className="flex-grow border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" 
+              />
+            )}
+
+            <div className="flex items-center gap-2 ml-auto">
+              <button 
+                onClick={resetView}
+                className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+              >
+                Reset View
+              </button>
+              <span className="text-sm text-gray-600">Zoom:</span>
+              <button 
+                onClick={() => setPdfScale(prev => Math.max(0.5, prev - 0.25))}
+                className="px-2 py-1 text-sm border rounded hover:bg-gray-50"
+              >
+                -
+              </button>
+              <span className="text-sm w-12 text-center">{Math.round(pdfScale * 100)}%</span>
+              <button 
+                onClick={() => setPdfScale(prev => Math.min(3, prev + 0.25))}
+                className="px-2 py-1 text-sm border rounded hover:bg-gray-50"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto p-4 bg-gray-100">
+          {/* Page Navigation */}
+          <div className="flex justify-center items-center gap-4 mb-4">
+            <button 
+              onClick={() => setPageNumber(prev => Math.max(prev - 1, 1))}
+              disabled={pageNumber <= 1}
+              className="px-3 py-1 bg-white border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Previous
+            </button>
+            <span className="text-sm font-medium px-4 py-1 bg-white rounded border">
+              Page {pageNumber} {numPages && `of ${numPages}`}
+            </span>
+            <button 
+              onClick={() => setPageNumber(prev => prev + 1)}
+              className="px-3 py-1 bg-white border rounded hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
+
+          {/* Enhanced PDF Container with better interaction */}
+          <div 
+            ref={pdfContainerRef}
+            className="relative mx-auto bg-white shadow-lg overflow-hidden"
+            style={{ 
+              width: '100%', 
+              height: '600px',
+              cursor: drawingMode === 'move' ? (isDragging ? 'grabbing' : 'grab') : 
+                     drawingMode === 'rectangle' ? 'crosshair' : 
+                     drawingMode === 'text' ? 'text' : 'default'
+            }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* PDF Display */}
+            {renderPdfViewer()}
+
+            {/* Annotations Overlay */}
+            <div className="absolute inset-0 pointer-events-none">
+              {currentPageFields.map((field, index) => (
+                <div key={index}>
+                  {field.type === 'rectangle' && (
+                    <div 
+                      className="absolute border-2 pointer-events-auto" 
+                      style={{ 
+                        left: field.x * pdfScale + pdfPosition.x, 
+                        top: field.y * pdfScale + pdfPosition.y, 
+                        width: field.width * pdfScale, 
+                        height: field.height * pdfScale, 
+                        borderColor: field.color, 
+                        backgroundColor: `${field.color}15` 
+                      }}
+                    >
+                      <div 
+                        className="absolute -top-6 left-0 text-white text-xs px-2 py-0.5 rounded-full flex items-center whitespace-nowrap" 
+                        style={{ backgroundColor: field.color }}
+                      >
+                        {field.label}
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            removeField(field); 
+                          }} 
+                          className="ml-2 text-white hover:text-red-200 font-bold"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {field.type === 'text' && (
+                    <div 
+                      className="absolute pointer-events-auto text-sm font-medium p-1 rounded"
+                      style={{ 
+                        left: field.x * pdfScale + pdfPosition.x, 
+                        top: field.y * pdfScale + pdfPosition.y, 
+                        color: field.color,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                      }}
+                    >
+                      {field.label}
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          removeField(field); 
+                        }} 
+                        className="ml-2 text-red-500 hover:text-red-700 font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Current Drawing Field */}
+              {isDrawing && currentField && (
+                <div 
+                  className="absolute border-2 border-dashed" 
+                  style={{ 
+                    left: (currentField.width < 0 ? currentField.x + currentField.width : currentField.x) * pdfScale + pdfPosition.x,
+                    top: (currentField.height < 0 ? currentField.y + currentField.height : currentField.y) * pdfScale + pdfPosition.y,
+                    width: Math.abs(currentField.width) * pdfScale, 
+                    height: Math.abs(currentField.height) * pdfScale, 
+                    borderColor: selectedColor, 
+                    backgroundColor: `${selectedColor}10` 
+                  }} 
+                />
+              )}
+            </div>
+
+            {/* Text Input Modal */}
+            {showTextInput && (
+              <div 
+                className="absolute bg-white p-3 border rounded-lg shadow-xl z-10 pointer-events-auto" 
+                style={{ 
+                  left: Math.min(textPosition.x * pdfScale + pdfPosition.x, 600), 
+                  top: Math.min(textPosition.y * pdfScale + pdfPosition.y, 900) 
+                }}
+              >
+                <input 
+                  type="text" 
+                  value={textInput} 
+                  onChange={(e) => setTextInput(e.target.value)} 
+                  placeholder="Enter text annotation" 
+                  className="border rounded px-3 py-1 text-sm w-56 focus:ring-2 focus:ring-red-500 focus:border-red-500" 
+                  autoFocus 
+                  onKeyPress={(e) => e.key === 'Enter' && addTextAnnotation()} 
+                />
+                <div className="flex gap-2 mt-2">
+                  <button 
+                    onClick={addTextAnnotation} 
+                    className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                  >
+                    Add
+                  </button>
+                  <button 
+                    onClick={() => setShowTextInput(false)} 
+                    className="px-3 py-1 bg-gray-200 text-xs rounded hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Field Summary */}
+          {currentPageFields.length > 0 && (
+            <div className="mt-4 p-3 bg-white rounded-lg border">
+              <h4 className="font-medium text-sm text-gray-700 mb-2">
+                Annotations on Page {pageNumber} ({currentPageFields.length})
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {currentPageFields.map((field, index) => (
+                  <span 
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs text-white"
+                    style={{ backgroundColor: field.color }}
+                  >
+                    {field.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t flex justify-between items-center bg-gray-50">
+          <div className="text-sm text-gray-600">
+            Total annotations: {fields.length}
+          </div>
+          <div className="flex gap-3">
+            <button 
+              onClick={onClose} 
+              className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSave} 
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-2"
+            >
+              <Check className="w-4 h-4" /> Save Annotations
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced File Upload Component
+const FileUploadBox = ({ category, files, onFileChange, onRemoveFile, onOpenAnnotation }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files.length > 0) {
+      onFileChange(e.dataTransfer.files, category);
+    }
+  };
+
+  const handleClick = () => {
+    fileInputRef.current.click();
+  };
+
+  return (
+    <div 
+      className={`bg-white rounded-xl shadow-lg p-6 transition-all ${isDragging ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <h3 className="text-lg font-semibold text-gray-800">{category}</h3>
+      <div className="flex justify-between items-center mt-2 mb-4">
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${Math.min(files.length / 5 * 100, 100)}%` }}></div>
+        </div>
+        <span className="text-sm font-medium text-gray-600 ml-3">{files.length}/5</span>
+      </div>
+
+      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+        {files.map((file, index) => (
+          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 min-w-0">
+              <FileText className="w-5 h-5 text-red-500 flex-shrink-0"/>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                {file.annotations.length > 0 && <span className="text-xs text-green-600">{file.annotations.length} annotations</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => onOpenAnnotation(file, category)} 
+                className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-md"
+                disabled={!file.isUploaded}
+              >
+                <Edit3 className="w-4 h-4"/>
+              </button>
+              <button 
+                onClick={() => onRemoveFile(category, index)} 
+                className="p-1.5 text-red-500 hover:bg-red-100 rounded-md"
+              >
+                <X className="w-4 h-4"/>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div 
+        className={`mt-4 cursor-pointer ${isDragging ? 'bg-blue-100' : 'bg-red-50 hover:bg-red-100'}`}
+        onClick={handleClick}
+      >
+        <div className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-red-300 rounded-lg">
+          <Upload className="w-6 h-6 text-red-500"/>
+          <span className="text-sm text-red-500 font-medium">Drag & drop files here or click to browse</span>
+          <span className="text-xs text-gray-500">Supports PDF, JPG, PNG</span>
+        </div>
+      </div>
+      <input 
+        ref={fileInputRef}
+        type="file" 
+        multiple 
+        accept=".pdf,.jpg,.jpeg,.png" 
+        onChange={(e) => onFileChange(e.target.files, category)} 
+        className="hidden"
+      />
+    </div>
+  );
+};
+
+// Main Component with Enhanced UI
+const RequestFlow = () => {
+    const [step, setStep] = useState(1);
+    const [flowName, setFlowName] = useState('');
+    const [senderEmail, setSenderEmail] = useState('');
+    const [hasEmailData, setHasEmailData] = useState(false);
+    const [emailDataDescription, setEmailDataDescription] = useState('');
+    const [flowType, setFlowType] = useState('');
+    const [principalName, setPrincipalName] = useState('');
+
+    const initialCategories = {
+        'Invoice': [],
+        'Packing List': [],
+        'Material Test Certificate': [],
+        'Certificate of Origin': [],
+        'Bill of Lading': []
+    };
+    const [documentCategories, setDocumentCategories] = useState(initialCategories);
+
+    const [showCanvas, setShowCanvas] = useState(false);
+    const [currentDocument, setCurrentDocument] = useState({ file: null, category: null });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    const handleFileChange = (files, category) => {
+        if (!files || files.length === 0) return;
+        
+        const newFiles = Array.from(files).map(file => ({
+            name: file.name,
+            fileObject: file,
+            isUploaded: true,
+            annotations: []
+        }));
+
+        setDocumentCategories(prev => {
+            const updatedCategory = [...prev[category], ...newFiles];
+            return { ...prev, [category]: updatedCategory };
+        });
+    };
+
+    const removeFile = (category, index) => {
+        setDocumentCategories(prev => {
+            const updatedCategory = prev[category].filter((_, i) => i !== index);
+            return { ...prev, [category]: updatedCategory };
+        });
+    };
+
+    const openAnnotation = (file, category) => {
+        setCurrentDocument({ file, category });
+        setShowCanvas(true);
+    };
+
+    const saveAnnotations = (annotations) => {
+        const { file, category } = currentDocument;
+        setDocumentCategories(prev => {
+            const categoryFiles = prev[category];
+            const fileIndex = categoryFiles.findIndex(f => f.name === file.name);
+            const updatedFile = { ...categoryFiles[fileIndex], annotations };
+            const updatedCategoryFiles = [...categoryFiles];
+            updatedCategoryFiles[fileIndex] = updatedFile;
+            return { ...prev, [category]: updatedCategoryFiles };
+        });
+    };
+
+    const canProceedStep1 = flowName && senderEmail && flowType && principalName && (!hasEmailData || emailDataDescription);
+    const canProceedStep2 = Object.values(documentCategories).every(cat => cat.length >= 5);
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        
+        try {
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            setShowSuccess(true);
+            setTimeout(() => {
+                setStep(1);
+                setFlowName('');
+                setSenderEmail('');
+                setPrincipalName('');
+                setFlowType('');
+                setHasEmailData(false);
+                setEmailDataDescription('');
+                setDocumentCategories(initialCategories);
+                setShowSuccess(false);
+            }, 3000);
+
+        } catch (error) {
+            console.error('Submission error:', error);
+            alert(`Failed to submit flow request: ${error.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto p-8 space-y-8 font-sans">
+            <style jsx>{`
+                .animate-fade-in {
+                    animation: fadeIn 0.3s ease-in-out;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .bg-primary { background-color: #E54C37; }
+                .text-primary { color: #E54C37; }
+                .border-primary { border-color: #E54C37; }
+                .focus\:ring-primary:focus { --tw-ring-color: #E54C37; }
+                .focus\:border-primary:focus { border-color: #E54C37; }
+                .hover\:bg-red-600:hover { background-color: #dc2626; }
+            `}</style>
+
+            <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-800">Request a New Document Flow</h1>
+                <p className="text-lg text-gray-600 mt-2">A three-step process to configure your automated extraction workflow.</p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full max-w-2xl mx-auto">
+                <div className="flex justify-between items-center">
+                    {[1, 2, 3].map(num => (
+                        <React.Fragment key={num}>
+                            <div className="flex flex-col items-center">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${step >= num ? 'bg-primary border-primary text-white' : 'bg-gray-200 border-gray-300 text-gray-500'}`}>
+                                    {step > num ? <Check /> : <span className="text-xl font-bold">{num}</span>}
+                                </div>
+                                <p className={`mt-2 font-semibold text-sm ${step >= num ? 'text-primary' : 'text-gray-600'}`}>
+                                    {num === 1 ? 'Setup' : num === 2 ? 'Documents' : 'Review'}
+                                </p>
+                            </div>
+                            {num < 3 && <div className={`flex-1 h-1 mx-4 ${step > num ? 'bg-primary' : 'bg-gray-300'}`} />}
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
+
+            {/* Step 1: Flow Configuration */}
+            {step === 1 && (
+                <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 animate-fade-in">
+                    <h2 className="text-2xl font-semibold text-gray-900 border-b pb-4">Flow Configuration</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Flow Name *</label>
+                            <input 
+                                type="text" 
+                                value={flowName} 
+                                onChange={(e) => setFlowName(e.target.value)} 
+                                placeholder="e.g., Q4 Export Documents" 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Sender Email *</label>
+                            <input 
+                                type="email" 
+                                value={senderEmail} 
+                                onChange={(e) => setSenderEmail(e.target.value)} 
+                                placeholder="sender@example.com" 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Flow Type *</label>
+                            <div className="flex gap-4 mt-2">
+                                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-primary">
+                                    <input 
+                                        type="radio" 
+                                        value="export" 
+                                        checked={flowType === 'export'} 
+                                        onChange={(e) => setFlowType(e.target.value)} 
+                                        className="text-primary focus:ring-primary"
+                                    />
+                                    <ArrowUpCircle className="w-5 h-5"/> 
+                                    Export
+                                </label>
+                                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-primary">
+                                    <input 
+                                        type="radio" 
+                                        value="import" 
+                                        checked={flowType === 'import'} 
+                                        onChange={(e) => setFlowType(e.target.value)} 
+                                        className="text-primary focus:ring-primary"
+                                    />
+                                    <Download className="w-5 h-5"/> 
+                                    Import
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Principal Name *</label>
+                            <input 
+                                type="text" 
+                                value={principalName} 
+                                onChange={(e) => setPrincipalName(e.target.value)} 
+                                placeholder="e.g., Global Trade Inc." 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                            />
+                        </div>
+                    </div>
+                    <div className="pt-4 space-y-4">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={hasEmailData} 
+                                onChange={(e) => setHasEmailData(e.target.checked)} 
+                                className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                            />
+                            <Mail className="w-5 h-5 text-gray-600"/> 
+                            Extract data from email content (subject/body)
+                        </label>
+                        {hasEmailData && (
+                            <textarea 
+                                value={emailDataDescription} 
+                                onChange={(e) => setEmailDataDescription(e.target.value)} 
+                                placeholder="Describe the data to extract, e.g., 'shipment tracking numbers, container IDs, and delivery dates'." 
+                                rows={3} 
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary focus:border-primary mt-2"
+                            />
+                        )}
+                    </div>
+                    <div className="flex justify-end pt-6">
+                        <button 
+                            onClick={() => setStep(2)} 
+                            disabled={!canProceedStep1} 
+                            className="px-8 py-3 rounded-lg font-bold text-white bg-primary hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            )}
+            
+            {/* Step 2: Document Upload & Annotation */}
+            {step === 2 && (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="text-center p-6 bg-blue-50 rounded-lg border border-blue-200">
+                        <h2 className="text-xl font-semibold text-blue-900">Upload Document Examples</h2>
+                        <p className="text-blue-700 mt-1">Each category requires a minimum of 5 example documents for the AI model to learn accurately. Upload your own files for each category below.</p>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {Object.keys(documentCategories).map(category => (
+                            <FileUploadBox
+                                key={category}
+                                category={category}
+                                files={documentCategories[category]}
+                                onFileChange={(files) => handleFileChange(files, category)}
+                                onRemoveFile={removeFile}
+                                onOpenAnnotation={openAnnotation}
+                            />
+                        ))}
+                    </div>
+                    <div className="flex justify-between pt-6">
+                        <button onClick={() => setStep(1)} className="px-8 py-3 rounded-lg font-bold border border-gray-300 hover:bg-gray-100 transition-all">Back</button>
+                        <button onClick={() => setStep(3)} disabled={!canProceedStep2} className="px-8 py-3 rounded-lg font-bold text-white bg-primary hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg">Continue to Review</button>
+                    </div>
+                    {!canProceedStep2 && <p className="text-center text-red-600 font-medium text-sm">You must provide at least 5 documents for each category to continue.</p>}
+                </div>
+            )}
+
+            {/* Step 3: Review & Submit */}
+            {step === 3 && (
+                <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 animate-fade-in">
+                    <h2 className="text-2xl font-semibold text-gray-900 border-b pb-4">Review & Submit</h2>
+                    {/* Summary Sections */}
+                    <div className="space-y-6">
+                        {/* Flow Config Summary */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h3 className="font-semibold text-lg mb-3">Flow Configuration</h3>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                                <p><strong>Flow Name:</strong> {flowName}</p>
+                                <p><strong>Sender Email:</strong> {senderEmail}</p>
+                                <p><strong>Principal:</strong> {principalName}</p>
+                                <p><strong>Flow Type:</strong> <span className="capitalize">{flowType}</span></p>
+                                <p><strong>Email Extraction:</strong> {hasEmailData ? 'Yes' : 'No'}</p>
+                                {hasEmailData && <p className="col-span-2"><strong>Extraction Details:</strong> {emailDataDescription}</p>}
+                            </div>
+                        </div>
+
+                        {/* Documents Summary */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h3 className="font-semibold text-lg mb-3">Submitted Documents</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(documentCategories).map(([category, files]) => (
+                                    <div key={category}>
+                                        <h4 className="font-medium text-gray-800">{category} ({files.length})</h4>
+                                        <ul className="list-disc list-inside text-sm text-gray-700 mt-1 space-y-1">
+                                            {files.map((file, index) => (
+                                                <li key={index} className="truncate">
+                                                    {file.name}
+                                                    {file.annotations.length > 0 && <span className="ml-2 text-xs font-semibold text-green-700">({file.annotations.length} annotations)</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex justify-between pt-6">
+                        <button onClick={() => setStep(2)} className="px-8 py-3 rounded-lg font-bold border border-gray-300 hover:bg-gray-100 transition-all">Back</button>
+                        <button onClick={handleSubmit} disabled={isSubmitting} className="px-8 py-3 w-48 rounded-lg font-bold flex items-center justify-center text-white bg-primary hover:bg-red-600 disabled:bg-gray-300 transition-all shadow-md hover:shadow-lg">
+                            {isSubmitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Submit Request'}
+                        </button>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal & Toast */}
+            {showCanvas && <PdfCanvasModal file={currentDocument.file} existingFields={currentDocument.file.annotations} onSave={saveAnnotations} onClose={() => setShowCanvas(false)}/>}
+            {showSuccess && (
+                <div className="fixed top-5 right-5 bg-green-500 text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-fade-in">
+                    <Check className="w-6 h-6"/>
+                    <div>
+                        <p className="font-bold">Success!</p>
+                        <p className="text-sm">Your flow request has been submitted.</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default RequestFlow;
+
+============================================================
+FILE: src/utils/getUser.js
+============================================================
+// src/utils/getUser.js
+export async function getUser() {
+    const isDev = import.meta.env.DEV;
+    const url = isDev ? '/.auth/me.json' : '/.auth/me';
+  
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('User not authenticated');
+      const data = await res.json();
+      const claims = data[0]?.user_claims || [];
+  
+      const user = {
+        name: claims.find(c => c.typ === 'name')?.val || '',
+        email: claims.find(c => c.typ === 'email')?.val || '',
+        id: data[0]?.user_id || '',
+      };
+  
+      return user;
+    } catch (err) {
+      return null;
+    }
+}
+  
+
+============================================================
+FILE: src/index.css
+============================================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+============================================================
+FILE: src/main.jsx
+============================================================
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { RouterProvider } from "react-router-dom";
+import "./index.css";
+import router from "./router";
+import { AuthProvider } from "./context/AuthContext"; // 👈
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  </React.StrictMode>
+);
+
+
+============================================================
+FILE: src/router.jsx
+============================================================
+import { createBrowserRouter } from 'react-router-dom';
+import MainLayout from './layout/MainLayout';
+import FlowDashboard from './pages/FlowDashboard';
+import FlowInfo from './pages/FlowInfo';
+import RequestFlow from './pages/RequestFlow';
+import NotFound from './pages/NotFound';
+import CustomsDashboard from './pages/statistics/CustomsDashboard';
+import UserPerformanceDashboard from './pages/statistics/UserPerformanceDashboard';
+import UserCompareDashboard from './pages/statistics/UserCompareDashboard';
+import UserComparisonSelector from './pages/statistics/UserComparisonSelector.jsx';
+
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <MainLayout />,
+    children: [
+      { path: 'uploads/flows', element: <FlowDashboard /> },
+      { path: 'uploads/flows/request', element: <RequestFlow /> },
+      { path: 'uploads/flows/informations', element: <FlowInfo /> },
+      { path: 'statistics/performance', element: <CustomsDashboard /> },
+      { path: 'statistics/performance/:username', element: <UserPerformanceDashboard /> },
+      { path: 'statistics/performance/compare', element: <UserComparisonSelector /> },
+      { path: 'statistics/performance/compare/:user1/:user2', element: <UserCompareDashboard /> },
+    ],
+    errorElement: <NotFound />,
+  },
+]);
+
+export default router;
+
+============================================================
+FILE: eslint.config.js
+============================================================
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+
+export default [
+  { ignores: ['dist'] },
+  {
+    files: ['**/*.{js,jsx}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...reactHooks.configs.recommended.rules,
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
+  },
+]
+
+
+============================================================
+FILE: package.json
+============================================================
+{
+  "name": "dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "node server.js",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.81.5",
+    "chart.js": "^4.5.0",
+    "date-fns": "^4.1.0",
+    "express": "^4.21.2",
+    "framer-motion": "^12.18.1",
+    "html2pdf.js": "^0.10.3",
+    "lucide-react": "^0.516.0",
+    "pdfjs-dist": "^5.4.54",
+    "react": "^19.1.0",
+    "react-calendar-heatmap": "^1.10.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^19.1.0",
+    "react-pdf": "^10.0.1",
+    "react-router-dom": "^7.6.2",
+    "reactflow": "^11.11.4",
+    "recharts": "^3.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.3.5"
+  }
+}
+
+
+============================================================
+FILE: postcss.config.js
+============================================================
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+
+============================================================
+FILE: README.md
+============================================================
+# React + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+
+============================================================
+FILE: server.js
+============================================================
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Fix __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+
+============================================================
+FILE: tailwind.config.js
+============================================================
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './index.html',
+    './src/**/*.{js,jsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: '#E54C37',
+        'primary-dark': '#C23D2E',
+        'primary-light': '#F1705A',
+
+        background: '#FDF9F8',
+        surface: '#FFFFFF',
+
+        'text-primary': '#1A1A1A',
+        'text-muted': '#6B6B6B',
+
+        border: '#EAEAEA',
+
+        success: '#22C55E',
+        error: '#EF4444',
+        info: '#3B82F6',
+      },
+    },
+  },
+  plugins: [],
+};
+
+
+
+
+============================================================
+FILE: vite.config.js
+============================================================
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
