@@ -4,11 +4,45 @@ import {
   Filter,
   CheckCircle,
   ChevronDown,
-  Download,
-  RefreshCw,
   XCircle,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { getUploads } from "../../api/api";
+
+// Cache configuration
+const CACHE_KEY = "flowRunsCache";
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes in ms
+
+// Get cached data if valid
+const getCachedData = () => {
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (!cached) return null;
+
+  const { data, timestamp } = JSON.parse(cached);
+  const isExpired = Date.now() - timestamp > CACHE_TTL;
+
+  if (isExpired) {
+    localStorage.removeItem(CACHE_KEY);
+    return null;
+  }
+
+  return data;
+};
+
+// Save data to cache
+const setCacheData = (data) => {
+  const cacheEntry = {
+    data,
+    timestamp: Date.now(),
+  };
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheEntry));
+  } catch (e) {
+    // localStorage might fail (quota exceeded), ignore silently
+    console.warn("Failed to save to cache", e);
+  }
+};
 
 const getStatusConfig = (status) => {
   const configs = {
@@ -21,7 +55,7 @@ const getStatusConfig = (status) => {
       color: "text-red-700 bg-red-50 border-red-200",
       icon: <XCircle className="w-3 h-3" />,
       label: "Failed",
-    }
+    },
   };
   return configs[status] || configs.Success;
 };
@@ -37,17 +71,17 @@ const getDuration = (run) => {
   if (!run.logicAppTimestamp || !run.Steps || run.Steps.length === 0) {
     return "N/A";
   }
-  
+
   const startTime = new Date(run.Steps[0].email.receivedAt);
   const endTime = new Date(run.logicAppTimestamp);
-  
+
   if (isNaN(startTime) || isNaN(endTime)) {
     return "N/A";
   }
-  
+
   const durationMs = endTime - startTime;
   const seconds = Math.floor(durationMs / 1000);
-  
+
   return `${seconds}s`;
 };
 
@@ -59,39 +93,71 @@ export default function FlowRunsTable({ onSelectRun }) {
   const [timeRange, setTimeRange] = useState("today");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    getUploadsData();
-    
-
-    async function getUploadsData() {
-      try {
-        const data = await getUploads("");
-        console.log(data);
-        setFlowRunsData(data);
-      } catch {
-        setFlowRunsData([]);
+  // Fetch data with caching
+  const fetchData = async (force = false) => {
+    if (!force) {
+      const cached = getCachedData();
+      if (cached) {
+        setFlowRunsData(cached);
+        setIsLoading(false);
+        return;
       }
     }
+
+    setIsLoading(true);
+    if (force) setIsRefreshing(true);
+
+    try {
+      const data = await getUploads("");
+      console.log("Fetched data:", data);
+      const validData = Array.isArray(data) ? data : [];
+
+      // Update state and cache
+      setFlowRunsData(validData);
+      setCacheData(validData);
+    } catch (error) {
+      console.error("Failed to fetch uploads:", error);
+      // On error, fall back to cache if available
+      const cached = getCachedData();
+      setFlowRunsData(cached || []);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchData(); // Try cache first
   }, []);
 
-  // Transform data
+  // Manual refresh handler
+  const handleRefresh = () => {
+    fetchData(true); // Force reload
+  };
+
+  // Transform and sort data: newest first
   const transformedData = useMemo(() => {
-    return flowRunsData.map(run => ({
-      id: run.runId,
-      projectName: run.companyName,
-      triggerTime: run.logicAppTimestamp,
-      status: getRunStatus(run),
-      duration: getDuration(run),
-      createdBy: run.finalResult?.checker || "Unknown",
-      rawData: run
-    }));
+    return flowRunsData
+      .map((run) => ({
+        id: run.runId,
+        projectName: run.companyName,
+        triggerTime: run.logicAppTimestamp,
+        status: getRunStatus(run),
+        duration: getDuration(run),
+        createdBy: run.finalResult?.checker || "Unknown",
+        rawData: run,
+      }))
+      .sort((a, b) => new Date(b.triggerTime) - new Date(a.triggerTime)); // Newest first
   }, [flowRunsData]);
 
   // Get unique values for filters
-  const uniqueProjects = [...new Set(transformedData.map(run => run.projectName))];
-  const uniqueStatuses = [...new Set(transformedData.map(run => run.status))];
+  const uniqueProjects = [...new Set(transformedData.map((run) => run.projectName))];
+  const uniqueStatuses = [...new Set(transformedData.map((run) => run.status))];
 
   // Filter data
   const filteredData = useMemo(() => {
@@ -99,19 +165,20 @@ export default function FlowRunsTable({ onSelectRun }) {
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(run =>
-        run.id.toLowerCase().includes(term) ||
-        run.projectName.toLowerCase().includes(term) ||
-        run.createdBy.toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (run) =>
+          run.id.toLowerCase().includes(term) ||
+          run.projectName.toLowerCase().includes(term) ||
+          run.createdBy.toLowerCase().includes(term)
       );
     }
 
     if (selectedProject) {
-      filtered = filtered.filter(run => run.projectName === selectedProject);
+      filtered = filtered.filter((run) => run.projectName === selectedProject);
     }
 
     if (selectedStatus) {
-      filtered = filtered.filter(run => run.status === selectedStatus);
+      filtered = filtered.filter((run) => run.status === selectedStatus);
     }
 
     if (timeRange !== "all") {
@@ -132,7 +199,7 @@ export default function FlowRunsTable({ onSelectRun }) {
           break;
       }
 
-      filtered = filtered.filter(run => new Date(run.triggerTime) >= cutoff);
+      filtered = filtered.filter((run) => new Date(run.triggerTime) >= cutoff);
     }
 
     return filtered;
@@ -155,10 +222,9 @@ export default function FlowRunsTable({ onSelectRun }) {
   const renderPaginationButtons = () => {
     const buttons = [];
     const maxVisibleButtons = 5;
-    
+
     if (totalPages <= 1) return null;
 
-    // Always show first page
     buttons.push(
       <button
         key={1}
@@ -173,7 +239,6 @@ export default function FlowRunsTable({ onSelectRun }) {
       </button>
     );
 
-    // Show ellipsis if needed
     if (currentPage > 3 && totalPages > maxVisibleButtons) {
       buttons.push(
         <span key="left-ellipsis" className="text-[#6B6B6B]">
@@ -182,7 +247,6 @@ export default function FlowRunsTable({ onSelectRun }) {
       );
     }
 
-    // Calculate range of pages to show
     let startPage = Math.max(2, currentPage - 1);
     let endPage = Math.min(totalPages - 1, currentPage + 1);
 
@@ -191,7 +255,6 @@ export default function FlowRunsTable({ onSelectRun }) {
       endPage = totalPages - 1;
     }
 
-    // Add middle pages
     for (let i = startPage; i <= endPage; i++) {
       buttons.push(
         <button
@@ -208,7 +271,6 @@ export default function FlowRunsTable({ onSelectRun }) {
       );
     }
 
-    // Show ellipsis if needed
     if (currentPage < totalPages - 2 && totalPages > maxVisibleButtons) {
       buttons.push(
         <span key="right-ellipsis" className="text-[#6B6B6B]">
@@ -217,7 +279,6 @@ export default function FlowRunsTable({ onSelectRun }) {
       );
     }
 
-    // Always show last page if there is one
     if (totalPages > 1) {
       buttons.push(
         <button
@@ -237,17 +298,54 @@ export default function FlowRunsTable({ onSelectRun }) {
     return buttons;
   };
 
+  // Skeleton loader component
+  const SkeletonRow = () => (
+    <tr className="animate-pulse">
+      {Array(5)
+        .fill()
+        .map((_, i) => (
+          <td key={i} className="px-6 py-4">
+            <div className="h-4 bg-gray-200 rounded"></div>
+          </td>
+        ))}
+    </tr>
+  );
+
   return (
     <div className="w-full h-full bg-[#FDF9F8]">
       <div className="bg-white shadow-sm border border-[#EAEAEA] overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#EAEAEA]">
-          <div className="flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-[#EAEAEA]">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
-              <h2 className="text-xl font-semibold text-[#1A1A1A]">Flow Runs</h2>
+              <h2 className="text-2xl font-semibold text-[#1A1A1A]">Flow Runs</h2>
               <p className="text-[#6B6B6B] text-sm mt-1">
-                {filteredData.length} Total • Showing {paginatedData.length} of {filteredData.length} results
+                {filteredData.length} total runs •{" "}
+                <span className="text-[#1A1A1A] font-medium">
+                  {paginatedData.length} shown
+                </span>
               </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              {/* Refresh Button */}
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center px-3 py-2 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] border border-[#EAEAEA] rounded-lg hover:bg-white transition-colors disabled:opacity-50"
+                title="Refresh data"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </button>
+
+              {isLoading && !isRefreshing && (
+                <div className="flex items-center text-[#E54C37] text-sm">
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  Loading
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -353,43 +451,48 @@ export default function FlowRunsTable({ onSelectRun }) {
           <table className="w-full">
             <thead className="bg-[#FDF9F8]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
                   Run ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
-                  Project Name
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Project
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
-                  Trigger Time
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Triggered At
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6B6B6B] uppercase tracking-wider border-b border-[#EAEAEA]">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
                   Duration
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-[#EAEAEA]">
-              {paginatedData.length > 0 ? (
+              {isLoading ? (
+                // Skeleton loader
+                Array.from({ length: itemsPerPage }).map((_, i) => (
+                  <SkeletonRow key={i} />
+                ))
+              ) : paginatedData.length > 0 ? (
                 paginatedData.map((run) => {
                   const statusConfig = getStatusConfig(run.status);
                   return (
                     <tr
                       key={run.id}
                       onClick={() => onSelectRun(run.rawData)}
-                      className="cursor-pointer hover:bg-[#FDF9F8] transition-colors"
+                      className="cursor-pointer hover:bg-blue-50 transition-colors group"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="w-2 h-2 bg-[#E54C37] rounded-full mr-3"></div>
-                          <span className="text-sm font-medium text-[#1A1A1A]">
-                            {run.id}
+                          <span className="text-sm font-medium text-[#1A1A1A] group-hover:text-[#E54C37] transition-colors">
+                            {run.id.substring(0, 8)}...
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-[#1A1A1A] font-medium">
+                        <div className="text-sm font-medium text-[#1A1A1A]">
                           {run.projectName}
                         </div>
                       </td>
@@ -416,9 +519,8 @@ export default function FlowRunsTable({ onSelectRun }) {
                     <h3 className="text-lg font-medium text-[#1A1A1A]">
                       No runs found
                     </h3>
-                    <p className="text-sm text-[#6B6B6B]">
-                      There are no test runs to display. Try adjusting your
-                      filters or trigger a new run.
+                    <p className="text-sm text-[#6B6B6B] mt-1">
+                      There are no test runs to display. Try adjusting your filters or trigger a new run.
                     </p>
                   </td>
                 </tr>
@@ -436,7 +538,7 @@ export default function FlowRunsTable({ onSelectRun }) {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isLoading}
                 className="px-3 py-1 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
@@ -446,7 +548,7 @@ export default function FlowRunsTable({ onSelectRun }) {
 
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || isLoading}
                 className="px-3 py-1 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next

@@ -2,12 +2,59 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    
+    <!-- Professional Favicon (Simple SVG) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>DKM DASHBOARD</text></svg>">
+    
+    <!-- Meta Tags for SEO and Theming -->
+    <meta name="description" content="DKM Performance and Flow Monitoring Dashboard" />
+    <meta name="theme-color" content="#E54C37">
+
+    <title>DKM Dashboard</title>
+
+    <!-- Modern Font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <link rel="stylesheet" crossorigin href="/assets/index-Dp513JKo.css">
+
+    <!-- Styling for the Loading State -->
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #FDF9F8; /* Matches your Tailwind background color */
+      }
+      .loader-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        flex-direction: column;
+      }
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(229, 76, 55, 0.2); /* Lighter version of your primary color */
+        border-top-color: #E54C37; /* Your primary color */
+        border-radius: 50%;
+        animation: spin 1s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <div id="root">
+      <!-- Professional Loading Spinner -->
+      <script type="module" src="/src/main.jsx"></script>
+    </div>
   </body>
 </html>

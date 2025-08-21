@@ -1,32 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  Search, 
-  LayoutDashboard, 
-  Upload, 
-  Container, 
-  BarChart3, 
+import {
+  Search,
+  LayoutDashboard,
+  Upload,
+  Container,
+  BarChart3,
   ChevronRight,
-  ChevronDown,
-  Home,
-  FileText,
-  Inbox,
-  Calendar,
   Settings,
-  HelpCircle
+  HelpCircle,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+// Custom hook to detect mobile
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkScreen = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
+
+  return isMobile;
+};
+
 const Sidebar = ({ collapsed, toggle }) => {
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedItems, setExpandedItems] = useState({});
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [activePanel, setActivePanel] = useState(null); // For mobile panel
   const { user, loading } = useAuth();
 
   const toggleExpanded = (itemId) => {
-    setExpandedItems(prev => ({
+    setExpandedItems((prev) => ({
       ...prev,
-      [itemId]: !prev[itemId]
+      [itemId]: !prev[itemId],
     }));
   };
 
@@ -39,8 +53,8 @@ const Sidebar = ({ collapsed, toggle }) => {
       subtitles: [
         { label: 'Overview', path: '/overview' },
         { label: 'Analytics', path: '/analytics' },
-        { label: 'Reports', path: '/reports' }
-      ]
+        { label: 'Reports', path: '/reports' },
+      ],
     },
     {
       id: 'uploads',
@@ -50,22 +64,9 @@ const Sidebar = ({ collapsed, toggle }) => {
       subtitles: [
         { label: 'Flows', path: '/uploads/flows' },
         { label: 'Informations', path: '/uploads/flows/informations' },
-        { label: 'Request Upload', path: '/uploads/flows/request' }
+        { label: 'Request Upload', path: '/uploads/flows/request' },
       ],
-      hasSubmenu: true
-    },
-    {
-      id: 'containers',
-      label: 'Containers',
-      icon: Container,
-      path: '/containers',
-      subtitles: [
-        { label: 'Active', path: '/containers/active' },
-        { label: 'Stopped', path: '/containers/stopped' },
-        { label: 'Images', path: '/containers/images' },
-        { label: 'Networks', path: '/containers/networks' }
-      ],
-      hasSubmenu: true
+      hasSubmenu: true,
     },
     {
       id: 'statistics',
@@ -75,10 +76,10 @@ const Sidebar = ({ collapsed, toggle }) => {
       subtitles: [
         { label: 'Performance', path: '/statistics/performance' },
         { label: 'Compare', path: '/statistics/performance/compare' },
-        { label: 'Monthly Report', path: '/statistics/monthly-report' }
+        { label: 'Monthly Report', path: '/statistics/monthly-report' },
       ],
-      hasSubmenu: true
-    }
+      hasSubmenu: true,
+    },
   ];
 
   const otherItems = [
@@ -90,9 +91,9 @@ const Sidebar = ({ collapsed, toggle }) => {
       subtitles: [
         { label: 'Profile', path: '/settings/profile' },
         { label: 'Preferences', path: '/settings/preferences' },
-        { label: 'Security', path: '/settings/security' }
+        { label: 'Security', path: '/settings/security' },
       ],
-      hasSubmenu: true
+      hasSubmenu: true,
     },
     {
       id: 'help',
@@ -102,17 +103,17 @@ const Sidebar = ({ collapsed, toggle }) => {
       subtitles: [
         { label: 'Documentation', path: '/help/documentation' },
         { label: 'Support', path: '/help/support' },
-        { label: 'FAQ', path: '/help/faq' }
+        { label: 'FAQ', path: '/help/faq' },
       ],
-      hasSubmenu: true
-    }
+      hasSubmenu: true,
+    },
   ];
 
-  const filteredMenuItems = menuItems.filter(item =>
+  const filteredMenuItems = menuItems.filter((item) =>
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredOtherItems = otherItems.filter(item =>
+  const filteredOtherItems = otherItems.filter((item) =>
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -123,14 +124,14 @@ const Sidebar = ({ collapsed, toggle }) => {
 
     return (
       <div key={item.id} className="relative">
-        <NavLink 
+        <NavLink
           to={item.path}
           end
           className={({ isActive }) => `
             flex items-center justify-between px-3 py-2 mx-2 rounded-lg
             transition-all duration-200 group cursor-pointer relative
-            ${isActive 
-              ? 'bg-primary text-white' 
+            ${isActive
+              ? 'bg-primary text-white'
               : 'hover:bg-gray-50 text-text-primary'
             }
             ${isExpanded && !isActive ? 'bg-gray-50' : ''}
@@ -153,33 +154,33 @@ const Sidebar = ({ collapsed, toggle }) => {
           {({ isActive }) => (
             <>
               <div className="flex items-center space-x-3">
-                <item.icon 
-                  size={20} 
+                <item.icon
+                  size={20}
                   className={`${
-                    isActive 
-                      ? 'text-white' 
+                    isActive
+                      ? 'text-white'
                       : 'text-text-muted group-hover:text-primary'
-                  }`} 
+                  }`}
                 />
                 {!collapsed && (
-                  <span className={`font-medium ${
-                    isActive 
-                      ? 'text-white' 
-                      : 'text-text-primary'
-                  }`}>
+                  <span
+                    className={`font-medium ${
+                      isActive ? 'text-white' : 'text-text-primary'
+                    }`}
+                  >
                     {item.label}
                   </span>
                 )}
               </div>
-              
+
               {!collapsed && item.hasSubmenu && (
-                <ChevronRight 
-                  size={16} 
+                <ChevronRight
+                  size={16}
                   className={`
                     transform transition-transform duration-200
                     ${isExpanded ? 'rotate-90' : ''}
-                    ${isActive 
-                      ? 'text-white' 
+                    ${isActive
+                      ? 'text-white'
                       : 'text-text-muted group-hover:text-primary'
                     }
                   `}
@@ -189,7 +190,7 @@ const Sidebar = ({ collapsed, toggle }) => {
           )}
         </NavLink>
 
-        {/* Expanded submenu */}
+        {/* Submenu (Desktop only) */}
         {!collapsed && showSubtitles && item.hasSubmenu && (
           <div className="ml-6 mt-1 space-y-1">
             {item.subtitles.map((subtitle, index) => (
@@ -199,10 +200,9 @@ const Sidebar = ({ collapsed, toggle }) => {
                 className={({ isActive }) => `
                   flex items-center px-3 py-1 text-sm rounded
                   transition-colors
-                  ${
-                    isActive
-                      ? 'text-primary font-medium'
-                      : 'text-text-muted hover:text-primary hover:bg-gray-50'
+                  ${isActive
+                    ? 'text-primary font-medium'
+                    : 'text-text-muted hover:text-primary hover:bg-gray-50'
                   }
                 `}
               >
@@ -215,11 +215,118 @@ const Sidebar = ({ collapsed, toggle }) => {
     );
   };
 
+  // ======================
+  // MOBILE: Bottom Navigation
+  // ======================
+  if (isMobile) {
+    return (
+      <>
+        {/* Bottom Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border shadow-lg z-50">
+          <div className="flex justify-around items-center h-16">
+            {/* Dashboard */}
+            <button
+              onClick={() => setActivePanel('dashboard')}
+              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
+            >
+              <LayoutDashboard size={22} />
+              <span className="text-xs mt-1">Dashboard</span>
+            </button>
+
+            {/* Uploads */}
+            <button
+              onClick={() => setActivePanel('uploads')}
+              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
+            >
+              <Upload size={22} />
+              <span className="text-xs mt-1">Uploads</span>
+            </button>
+
+            {/* Statistics */}
+            <button
+              onClick={() => setActivePanel('statistics')}
+              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
+            >
+              <BarChart3 size={22} />
+              <span className="text-xs mt-1">Stats</span>
+            </button>
+
+            {/* Settings */}
+            <button
+              onClick={() => setActivePanel('settings')}
+              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
+            >
+              <Settings size={22} />
+              <span className="text-xs mt-1">Settings</span>
+            </button>
+
+            {/* Help */}
+            <button
+              onClick={() => setActivePanel('help')}
+              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
+            >
+              <HelpCircle size={22} />
+              <span className="text-xs mt-1">Help</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Slide-Up Panel */}
+        {activePanel && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end"
+            onClick={() => setActivePanel(null)}
+          >
+            <div
+              className="bg-white w-full max-h-96 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-in-out"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-text-primary">
+                  {
+                    [...menuItems, ...otherItems].find((i) => i.id === activePanel)
+                      ?.label
+                  }
+                </h3>
+                <button
+                  onClick={() => setActivePanel(null)}
+                  className="p-2 rounded-full hover:bg-gray-100"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {[
+                  ...menuItems.find((i) => i.id === activePanel)?.subtitles || [],
+                  ...otherItems.find((i) => i.id === activePanel)?.subtitles || [],
+                ].map((sub, idx) => (
+                  <NavLink
+                    key={idx}
+                    to={sub.path}
+                    className="block py-2 px-4 rounded hover:bg-gray-100 text-text-muted"
+                    onClick={() => setActivePanel(null)}
+                  >
+                    {sub.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ======================
+  // DESKTOP: Original Sidebar
+  // ======================
   return (
-    <div className={`
+    <div
+      className={`
       ${collapsed ? 'w-16' : 'w-64'} 
       bg-white border-r border-border h-screen flex flex-col transition-all duration-300 fixed
-    `}>
+    `}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center space-x-3">
@@ -234,9 +341,11 @@ const Sidebar = ({ collapsed, toggle }) => {
           onClick={toggle}
           className="p-1 rounded transition-colors"
         >
-          <ChevronRight 
-            size={20} 
-            className={`text-white transform transition-transform duration-200 bg-primary rounded-md  ${collapsed ? '' : 'rotate-180'}`} 
+          <ChevronRight
+            size={20}
+            className={`text-white transform transition-transform duration-200 bg-primary rounded-md  ${
+              collapsed ? '' : 'rotate-180'
+            }`}
           />
         </button>
       </div>
@@ -244,10 +353,13 @@ const Sidebar = ({ collapsed, toggle }) => {
       {/* Search */}
       <div className="p-4 border-b border-border">
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted" />
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted"
+          />
           <input
             type="text"
-            placeholder={collapsed ? "" : "Search"}
+            placeholder={collapsed ? '' : 'Search'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`
@@ -271,7 +383,7 @@ const Sidebar = ({ collapsed, toggle }) => {
             </div>
           )}
           <div className="space-y-1">
-            {filteredMenuItems.map(item => renderMenuItem(item))}
+            {filteredMenuItems.map((item) => renderMenuItem(item))}
           </div>
         </div>
 
@@ -285,30 +397,33 @@ const Sidebar = ({ collapsed, toggle }) => {
             </div>
           )}
           <div className="space-y-1">
-            {filteredOtherItems.map(item => renderMenuItem(item, true))}
+            {filteredOtherItems.map((item) => renderMenuItem(item, true))}
           </div>
         </div>
       </div>
 
       {/* User Profile */}
       {!loading && user && (
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-            <span className="text-text-muted font-medium text-sm">{user.name.split(' ')[0][0]}{user.name.split(' ')[1][0]}</span>
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-text-primary text-sm truncate">
-                {user.name}
-              </div>
-              <div className="text-text-muted text-xs truncate">
-                {user.email}
-              </div>
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+              <span className="text-text-muted font-medium text-sm">
+                {user.name.split(' ')[0][0]}
+                {user.name.split(' ')[1]?.[0] || ''}
+              </span>
             </div>
-          )}
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-text-primary text-sm truncate">
+                  {user.name}
+                </div>
+                <div className="text-text-muted text-xs truncate">
+                  {user.email}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );

@@ -1,162 +1,222 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, { Controls, MiniMap, Background, useNodesState, useEdgesState, addEdge, Panel } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ChevronLeft, Play, Mail, Database, FileSpreadsheet } from 'lucide-react';
+import { ChevronLeft, Play, Mail, Database, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 
-// Define nodeTypes outside component to avoid React Flow warning
+// Stronger, professional colors
+const COLORS = {
+  success: {
+    bg: '#16a34a',     // green-600
+    iconBg: '#22c55e', // green-500
+    border: '#15803d', // green-700
+    text: 'text-white',
+  },
+  failed: {
+    bg: '#dc2626',     // red-600
+    iconBg: '#ef4444', // red-500
+    border: '#b91c1c', // red-700
+    text: 'text-white',
+  },
+  unknown: {
+    bg: '#6b7280',     // gray-500
+    iconBg: '#4b5563', // gray-600
+    border: '#374151', // gray-700
+    text: 'text-white',
+  },
+};
+
+// Define nodeTypes outside component
 const nodeTypes = {};
 
-// Step type mapping with proper failure detection
+// Step type mapping with failure detection and error extraction
 const getStepInfo = (step, index) => {
   const stepType = Object.keys(step)[0];
   const stepData = step[stepType];
-  
+
+  // Normalize status to lowercase for comparison
+  const statusRaw = stepData?.status;
+  const statusLower = String(statusRaw || '').toLowerCase().trim();
+
+  let failed = false;
+  let error = null;
+
+  // Extract error
+  if (stepData?.failError && typeof stepData.failError === 'string' && stepData.failError.trim() !== '') {
+    error = stepData.failError.trim();
+  } else if (statusLower === 'failed' || statusLower === 'error') {
+    error = 'Step failed'; // fallback message
+  }
+
+  // Determine failure per step
+  switch (index) {
+    case 0: // Email
+      failed = false; // always success per business rule
+      break;
+    case 1: // Azure Function
+      failed = statusLower === 'failed' || statusLower === 'error' || !!stepData?.error || !!stepData?.failed;
+      break;
+    case 2: // Output Excel
+      failed = statusLower === 'failed' || statusLower === 'error';
+      break;
+    default:
+      failed = statusLower === 'failed';
+  }
+
+  // Override: if no status but we have failError, mark as failed
+  if (!statusRaw && error) failed = true;
+
   switch (index) {
     case 0:
       return {
         title: 'Email Processed',
         subtitle: 'Outlook',
         icon: <Mail className="w-5 h-5" />,
-        bgColor: '#ef4444', // red-500
-        iconBg: '#559CAD', // red-600
-        textColor: 'text-white',
-        failed: false // Email always succeeds per requirements
+        ...COLORS.success,
+        failed: false,
+        error: null,
+        status: 'success',
       };
     case 1:
-      const step2Failed = stepData?.error || stepData?.failed || stepData?.status === 'failed';
       return {
         title: 'Data Extracted',
         subtitle: 'Azure Function',
         icon: <Database className="w-5 h-5" />,
-        bgColor: step2Failed ? '#ef4444' : '#2A7F62', // red-500 or green-500
-        iconBg: step2Failed ? '#dc2626' : '#2A7F62', // red-600 or green-600
-        textColor: 'text-white',
-        failed: step2Failed
+        ...(failed ? COLORS.failed : COLORS.success),
+        failed,
+        error,
+        status: failed ? 'failed' : 'success',
       };
     case 2:
-      const step3Failed = stepData?.status === 'failed' || stepData?.status === 'error';
       return {
         title: 'Excel Dropped on Location',
         subtitle: 'File System',
         icon: <FileSpreadsheet className="w-5 h-5" />,
-        bgColor: step3Failed ? '#ef4444' : '#2A7F62', // red-500 or green-500
-        iconBg: step3Failed ? '#dc2626' : '#2A7F62', // red-600 or green-600
-        textColor: 'text-white',
-        failed: step3Failed
+        ...(failed ? COLORS.failed : COLORS.success),
+        failed,
+        error: failed && !error ? 'Failed to write Excel file' : error,
+        status: failed ? 'failed' : 'success',
       };
     default:
       return {
         title: 'Unknown Step',
         subtitle: 'Unknown',
         icon: <div className="w-5 h-5 rounded-full bg-gray-400" />,
-        bgColor: '#6b7280', // gray-500
-        iconBg: '#4b5563', // gray-600
-        textColor: 'text-white',
-        failed: false
+        ...COLORS.unknown,
+        failed: false,
+        error: null,
+        status: 'unknown',
       };
   }
 };
 
-// Utility functions
-const getStatusColor = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'success':
-      return 'bg-green-100 text-green-800 border-green-200';
-    case 'failed':
-      return 'bg-red-100 text-red-800 border-red-200';
-    case 'running':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
+// Utility: Status badge
+const getStatusBadge = (status) => {
+  const badgeStyles = {
+    success: 'bg-green-100 text-green-800 border-green-200',
+    failed: 'bg-red-100 text-red-800 border-red-200',
+    unknown: 'bg-gray-100 text-gray-800 border-gray-200',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${badgeStyles[status]}`}>
+      {status === 'success' && '✓ Success'}
+      {status === 'failed' && '✗ Failed'}
+      {status === 'unknown' && '• Unknown'}
+    </span>
+  );
 };
 
-const getStatusIcon = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'success':
-      return <span className="text-green-500">✓</span>;
-    case 'failed':
-      return <span className="text-red-500">✗</span>;
-    case 'running':
-      return <span className="text-blue-500">↻</span>;
-    default:
-      return <span className="text-gray-500">○</span>;
-  }
-};
-
-const getStepStatus = (step) => {
-  const stepType = Object.keys(step)[0];
-  return step[stepType]?.status || 'unknown';
-};
-
+// Create enhanced nodes
 const createFlowNodes = (steps) => {
   return steps.map((step, index) => {
     const stepInfo = getStepInfo(step, index);
-    
+
     return {
       id: `node-${index}`,
       type: 'default',
       data: {
         label: (
-          <div 
-            className="flex items-center p-3 min-w-[200px] bg-gray-200"
-           
+          <div
+            className={`flex flex-col p-3 min-w-[240px] rounded-lg border shadow-sm transition-all hover:shadow-md ${
+              stepInfo.failed ? 'animate-pulse' : ''
+            }`}
+            style={{
+              backgroundColor: stepInfo.bg,
+              borderColor: stepInfo.border,
+            }}
           >
-            <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 text-white"
-              style={{ backgroundColor: stepInfo.iconBg }}
-            >
-              {stepInfo.icon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className={`font-semibold text-sm leading-tight text-${stepInfo.textColor}`}>
-                {stepInfo.title}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center flex-1 min-w-0">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 text-white"
+                  style={{ backgroundColor: stepInfo.iconBg }}
+                >
+                  {stepInfo.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`font-semibold text-sm leading-tight ${stepInfo.text}`}>
+                    {stepInfo.title}
+                  </div>
+                  <div className={`text-xs opacity-90 mt-0.5 ${stepInfo.text}`}>
+                    {stepInfo.subtitle}
+                  </div>
+                </div>
               </div>
-              <div className={`text-xs opacity-80 mt-0.5 text-${stepInfo.textColor}`}>
-                {stepInfo.subtitle}
-              </div>
+              {stepInfo.failed && (
+                <AlertTriangle className="w-4 h-4 text-white opacity-90 ml-2 flex-shrink-0" />
+              )}
             </div>
-            {stepInfo.failed && (
-              <div className="ml-2 flex-shrink-0">
-                <div className="w-2 h-2 bg-white rounded-full opacity-80"></div>
+
+            {/* Error message */}
+            {stepInfo.failed && stepInfo.error && (
+              <div className="mt-2 pt-2 border-t border-white border-opacity-30">
+                <p className="text-xs text-white text-opacity-90 leading-tight">
+                  {typeof stepInfo.error === 'string'
+                    ? stepInfo.error.length > 60
+                      ? `${stepInfo.error.substring(0, 60)}...`
+                      : stepInfo.error
+                    : JSON.stringify(stepInfo.error)}
+                </p>
               </div>
             )}
           </div>
         ),
         step: step,
         failed: stepInfo.failed,
+        status: stepInfo.status,
       },
-      position: { x: index * 280, y: 0 },
+      position: { x: index * 300, y: 0 },
       style: {
         background: 'transparent',
         border: 'none',
         padding: 0,
         width: 'auto',
-        minWidth: '220px',
+        minWidth: '240px',
       },
     };
   });
 };
 
+// Edges: Red if next step failed, green otherwise
 const createFlowEdges = (steps) => {
   return steps.slice(0, -1).map((step, index) => {
     const currentStepInfo = getStepInfo(step, index);
     const nextStepInfo = getStepInfo(steps[index + 1], index + 1);
-    
+
     return {
       id: `edge-${index}-${index + 1}`,
       source: `node-${index}`,
       target: `node-${index + 1}`,
-      animated: getStepStatus(steps[index + 1]) === 'running',
+      animated: nextStepInfo.status === 'running',
       style: {
-        stroke: nextStepInfo.failed ? '#ef4444' : '#355070', // red-500 or green-500
-        strokeWidth: 1,
+        stroke: nextStepInfo.failed ? COLORS.failed.bg : COLORS.success.bg,
+        strokeWidth: 2,
       },
       type: 'smoothstep',
     };
   });
 };
 
+// StepDetailPanel: Show full error
 const StepDetailPanel = ({ step, onClose }) => {
   if (!step) return null;
 
@@ -180,7 +240,9 @@ const StepDetailPanel = ({ step, onClose }) => {
         <div>
           <p className="text-sm text-gray-500">Status</p>
           <div className="flex items-center gap-2">
-            {getStatusIcon(status)}
+            {status === 'success' && '✓'}
+            {status === 'failed' && '✗'}
+            {status === 'unknown' && '•'}
             <span className="capitalize">{status}</span>
           </div>
         </div>
@@ -188,7 +250,9 @@ const StepDetailPanel = ({ step, onClose }) => {
           key !== 'status' && (
             <div key={key}>
               <p className="text-sm text-gray-500">{key}</p>
-              <p className="whitespace-pre-wrap break-all">{JSON.stringify(value, null, 2)}</p>
+              <p className="whitespace-pre-wrap break-all text-sm">
+                {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+              </p>
             </div>
           )
         ))}
@@ -204,10 +268,10 @@ export default function FlowPlayground({ run, onBack }) {
 
   const flowElements = useMemo(() => {
     if (!run?.Steps?.length) return { nodes: [], edges: [] };
-    
+
     const nodes = createFlowNodes(run.Steps);
     const edges = createFlowEdges(run.Steps);
-    
+
     return { nodes, edges };
   }, [run]);
 
@@ -228,8 +292,8 @@ export default function FlowPlayground({ run, onBack }) {
       <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <p className="text-gray-500">No run data available</p>
-          <button 
-            onClick={onBack} 
+          <button
+            onClick={onBack}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Back to Dashboard
@@ -257,9 +321,9 @@ export default function FlowPlayground({ run, onBack }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {getStatusIcon(overallStatus)}
+            {overallStatus === 'success' ? '✓' : '✗'}
             <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(overallStatus)}`}>
-              {overallStatus}
+              {overallStatus === 'success' ? 'Success' : 'Failed'}
             </span>
           </div>
         </div>
@@ -283,13 +347,12 @@ export default function FlowPlayground({ run, onBack }) {
           className="bg-gradient-to-br from-gray-50 to-gray-100"
         >
           <Controls />
-          <MiniMap 
+          <MiniMap
             nodeColor={(node) => {
-              const status = node.data?.step ? getStepStatus(node.data.step) : 'unknown';
-              return status === 'success' ? '#16a34a' : 
-                     status === 'failed' ? '#dc2626' : 
-                     '#6b7280';
-            }} 
+              if (node.data?.failed) return COLORS.failed.bg;
+              if (node.data?.status === 'success') return COLORS.success.bg;
+              return COLORS.unknown.bg;
+            }}
             pannable
             zoomable
           />
@@ -301,14 +364,26 @@ export default function FlowPlayground({ run, onBack }) {
             </div>
           </Panel>
         </ReactFlow>
-        
+
         {selectedStep && (
-          <StepDetailPanel 
-            step={selectedStep} 
-            onClose={() => setSelectedStep(null)} 
+          <StepDetailPanel
+            step={selectedStep}
+            onClose={() => setSelectedStep(null)}
           />
         )}
       </div>
     </div>
   );
 }
+
+// Utility: Status color class
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'success':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'failed':
+      return 'bg-red-100 text-red-800 border-red-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};

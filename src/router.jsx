@@ -9,6 +9,7 @@ import UserPerformanceDashboard from './pages/statistics/UserPerformanceDashboar
 import UserCompareDashboard from './pages/statistics/UserCompareDashboard';
 import UserComparisonSelector from './pages/statistics/UserComparisonSelector.jsx';
 import MonthlyReport from './pages/statistics/MonthlyReport';
+import Profile from './pages/profile/Profile';
 
 
 const router = createBrowserRouter([
@@ -23,7 +24,8 @@ const router = createBrowserRouter([
       { path: 'statistics/performance/:username', element: <UserPerformanceDashboard /> },
       { path: 'statistics/performance/compare', element: <UserComparisonSelector /> },
       { path: 'statistics/performance/compare/:user1/:user2', element: <UserCompareDashboard /> },
-      { path: 'statistics/monthly-report', element: <MonthlyReport /> }, 
+      { path: 'statistics/monthly-report', element: <MonthlyReport /> },
+      { path: 'settings/profile', element: <Profile /> }
     ],
     errorElement: <NotFound />,
   },
