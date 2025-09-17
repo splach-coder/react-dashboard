@@ -17,7 +17,7 @@ import {
   RefreshCw, Award ,
   User, Clock, FileText, TrendingUp, Calendar, ChevronDown, ChevronRight,
   Activity, X, BarChart3, PieChart, Users, Zap, FileEdit,
-  FilePlus, Search, Download,
+  FilePlus, Search, Download, Scale,
 } from "lucide-react";
 import { format, subDays, eachDayOfInterval } from "date-fns";
 import { useParams, useNavigate } from "react-router-dom";
@@ -107,6 +107,8 @@ const transformApiData = (apiData) => {
     ([type, count]) => ({ type, count })
   );
 
+  const workloadAnalysis = calculateWorkloadConsistency(dailyFiles.map(d => d.total));
+
   return {
     user: {
       name: apiData.user
@@ -130,6 +132,7 @@ const transformApiData = (apiData) => {
       mostActiveHour: `${apiData.summary.hour_with_most_activity}:00`,
       daysActive: apiData.summary.days_active,
       modificationsPerFile: apiData.summary.modifications_per_file.toFixed(2),
+      workloadConsistency: workloadAnalysis, 
     },
     dailyMetrics,
     chartData: {
@@ -152,6 +155,41 @@ const transformApiData = (apiData) => {
       hourlyActivity,
     },
   };
+};
+
+// Calculate workload consistency analysis
+const calculateWorkloadConsistency = (dailyTotals) => {
+  if (dailyTotals.length === 0) return { category: "No Data", description: "No data available", chartData: { labels: [], datasets: [] } };
+
+  const mean = dailyTotals.reduce((sum, val) => sum + val, 0) / dailyTotals.length;
+  const variance = dailyTotals.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / dailyTotals.length;
+  const stdDev = Math.sqrt(variance);
+  const coefficientOfVariation = mean > 0 ? (stdDev / mean) : 0;
+
+  let category, description;
+
+  if (coefficientOfVariation <= 0.3) {
+    category = "Steady Performer";
+    description = "Handles a consistent and predictable number of files each day.";
+  } else if (coefficientOfVariation >= 0.8) {
+    category = "Spiky Performer";
+    description = "Handles workload in concentrated bursts, excelling at high-volume tasks.";
+  } else {
+    category = "Flexible Performer";
+    description = "Adapts to a fluctuating workload, managing both quiet and busy periods.";
+  }
+  
+  const chartData = {
+      labels: Array.from({ length: dailyTotals.length }, (_, i) => i + 1),
+      datasets: [{
+          data: dailyTotals,
+          backgroundColor: 'rgba(139, 92, 246, 0.2)',
+          borderColor: 'rgba(139, 92, 246, 1)',
+          borderWidth: 1,
+      }]
+  };
+
+  return { category, description, chartData };
 };
 
 // --- Skeleton Loading Component ---
@@ -510,6 +548,17 @@ const UserPerformanceDashboard = () => {
           />
         </div>
 
+        <div>
+        <InsightCardWorkLoad
+                title="Workload Consistency"
+                category={data.user.workloadConsistency.category}
+                description={data.user.workloadConsistency.description}
+                chartData={data.user.workloadConsistency.chartData}
+                icon={<Scale className="w-6 h-6 text-purple-500" />}
+            />
+        </div>
+
+
         {/* Insight Panel */}
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -750,6 +799,27 @@ const InsightCard = ({ title, value, subtitle, icon, color }) => {
     </div>
   );
 };
+
+const InsightCardWorkLoad = ({ title, category, description, chartData, icon }) => (
+  <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+      <div className="flex items-start space-x-4">
+          <div className="bg-gray-100 p-3 rounded-lg">{icon}</div>
+          <div>
+              <p className="text-sm text-gray-500 font-medium">{title}</p>
+              <p className="text-xl font-bold text-gray-800">{category}</p>
+              <p className="text-xs text-gray-500 mt-1">{description}</p>
+          </div>
+      </div>
+      <div className="h-20 mt-4">
+          <Bar data={chartData} options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false }, tooltip: { enabled: false } },
+              scales: { x: { display: false }, y: { display: false } }
+          }} />
+      </div>
+  </div>
+);
 
 const ChartBox = ({ title, icon, children }) => (
   <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">

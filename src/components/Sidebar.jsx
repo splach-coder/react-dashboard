@@ -4,7 +4,7 @@ import {
   Search,
   LayoutDashboard,
   Upload,
-  Container,
+  Sparkles,
   BarChart3,
   ChevronRight,
   Settings,
@@ -55,6 +55,16 @@ const Sidebar = ({ collapsed, toggle }) => {
         { label: 'Analytics', path: '/analytics' },
         { label: 'Reports', path: '/reports' },
       ],
+    },
+    {
+      id: 'ai-agents',
+      label: 'AI Agents',
+      icon: Sparkles,
+      path: '/ai-agents',
+      subtitles: [
+        { label: 'Email Assistant', path: '/ai-agents/email-assistant' },
+      ],
+      hasSubmenu: true,
     },
     {
       id: 'uploads',

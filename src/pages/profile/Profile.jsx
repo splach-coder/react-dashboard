@@ -54,16 +54,10 @@ const Profile = () => {
                         <Mail className="w-5 h-5 text-text-muted mr-4" />
                         <div>
                             <p className="text-xs text-text-muted">Email Address</p>
-                            <p className="font-medium text-text-primary">{user.email}</p>
+                            <p className="font-medium text-text-primary">{user.id}</p>
                         </div>
                     </div>
-                     <div className="flex items-center">
-                        <ShieldCheck className="w-5 h-5 text-text-muted mr-4" />
-                        <div>
-                            <p className="text-xs text-text-muted">User ID</p>
-                            <p className="font-mono text-sm text-text-primary bg-gray-100 px-2 py-1 rounded">{user.id}</p>
-                        </div>
-                    </div>
+                    
                 </div>
             </div>
           </div>
