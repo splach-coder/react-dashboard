@@ -19,16 +19,44 @@ const getProjectColor = (projectName) => {
     { bg: "bg-red-100", text: "text-red-700", border: "border-red-200" },
     { bg: "bg-green-100", text: "text-green-700", border: "border-green-200" },
     { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200" },
-    { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-200" },
+    {
+      bg: "bg-purple-100",
+      text: "text-purple-700",
+      border: "border-purple-200",
+    },
     { bg: "bg-pink-100", text: "text-pink-700", border: "border-pink-200" },
-    { bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-200" },
-    { bg: "bg-yellow-100", text: "text-yellow-700", border: "border-yellow-200" },
+    {
+      bg: "bg-indigo-100",
+      text: "text-indigo-700",
+      border: "border-indigo-200",
+    },
+    {
+      bg: "bg-yellow-100",
+      text: "text-yellow-700",
+      border: "border-yellow-200",
+    },
     { bg: "bg-teal-100", text: "text-teal-700", border: "border-teal-200" },
-    { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-200" },
+    {
+      bg: "bg-orange-100",
+      text: "text-orange-700",
+      border: "border-orange-200",
+    },
     { bg: "bg-cyan-100", text: "text-cyan-700", border: "border-cyan-200" },
-    { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
-    { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-200" },
-    { bg: "bg-fuchsia-100", text: "text-fuchsia-700", border: "border-fuchsia-200" },
+    {
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+      border: "border-emerald-200",
+    },
+    {
+      bg: "bg-violet-100",
+      text: "text-violet-700",
+      border: "border-violet-200",
+    },
+    {
+      bg: "bg-fuchsia-100",
+      text: "text-fuchsia-700",
+      border: "border-fuchsia-200",
+    },
     { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-200" },
     { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-200" },
     { bg: "bg-lime-100", text: "text-lime-700", border: "border-lime-200" },
@@ -37,13 +65,13 @@ const getProjectColor = (projectName) => {
     { bg: "bg-zinc-100", text: "text-zinc-700", border: "border-zinc-200" },
     { bg: "bg-stone-100", text: "text-stone-700", border: "border-stone-200" },
   ];
-  
+
   // Generate consistent color index based on project name
-  const hash = projectName.split('').reduce((a, b) => {
-    a = ((a << 5) - a) + b.charCodeAt(0);
+  const hash = projectName.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
     return a & a;
   }, 0);
-  
+
   return colors[Math.abs(hash) % colors.length];
 };
 
@@ -56,27 +84,31 @@ const getCachedData = () => {
   const cached = localStorage.getItem(CACHE_KEY);
   if (!cached) return null;
 
-  const { data, timestamp } = JSON.parse(cached);
-  const isExpired = Date.now() - timestamp > CACHE_TTL;
+  try {
+    const { data, timestamp } = JSON.parse(cached);
+    const isExpired = Date.now() - timestamp > CACHE_TTL;
 
-  if (isExpired) {
+    if (isExpired) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+
+    return data; // Return the full cached response
+  } catch (e) {
     localStorage.removeItem(CACHE_KEY);
     return null;
   }
-
-  return data;
 };
 
 // Save data to cache
 const setCacheData = (data) => {
   const cacheEntry = {
-    data,
+    data: data, // Store the full response object
     timestamp: Date.now(),
   };
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cacheEntry));
   } catch (e) {
-    // localStorage might fail (quota exceeded), ignore silently
     console.warn("Failed to save to cache", e);
   }
 };
@@ -85,19 +117,19 @@ const getStatusConfig = (status) => {
   const configs = {
     success: {
       color: "text-green-700 bg-green-50 border-green-200",
-      rowBg: "bg-gradient-to-r from-white via-white to-green-50",
+      rowBg: "bg-gradient-to-r from-white via-green-50 to-green-50",
       icon: <CheckCircle className="w-3 h-3" />,
       label: "Completed",
     },
     failed: {
       color: "text-red-700 bg-red-50 border-red-200",
-      rowBg: "bg-gradient-to-r from-white via-white to-red-50",
+      rowBg: "bg-gradient-to-r from-white via-red-50 to-red-50",
       icon: <XCircle className="w-3 h-3" />,
       label: "Failed",
     },
     pending: {
       color: "text-amber-700 bg-amber-50 border-amber-200",
-      rowBg: "bg-gradient-to-r from-white via-white to-amber-50",
+      rowBg: "bg-gradient-to-r from-white via-amber-50 to-amber-50",
       icon: <Clock className="w-3 h-3" />,
       label: "Pending",
     },
@@ -111,7 +143,7 @@ const getRunStatus = (run) => {
   if (run.finalResult?.workflowStatus) {
     return run.finalResult.workflowStatus;
   }
-  
+
   // Fallback to old logic
   if (!run.finalResult?.allStepsSucceeded) {
     return "failed";
@@ -130,6 +162,8 @@ export default function FlowRunsTable({ onSelectRun }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copiedRef, setCopiedRef] = useState(null);
+  const [timedOutWorkflows, setTimedOutWorkflows] = useState([]);
+  const [copiedDeclarationId, setCopiedDeclarationId] = useState(null);
   const itemsPerPage = 10;
 
   // Copy to clipboard handler
@@ -145,47 +179,101 @@ export default function FlowRunsTable({ onSelectRun }) {
     }
   };
 
-  // Fetch data with caching
+  // Fetch data with optimized API calls
   const fetchData = async (force = false) => {
+    // Skip cache check if force refresh
     if (!force) {
       const cached = getCachedData();
       if (cached) {
-        setFlowRunsData(cached);
-        setIsLoading(false);
-        return;
+        const cachedData = cached.logs || cached;
+        if (Array.isArray(cachedData) && cachedData.length > 0) {
+          setFlowRunsData(cachedData);
+          setIsLoading(false);
+          return;
+        }
       }
     }
 
-    setIsLoading(true);
+    // DON'T clear existing data immediately - keep showing old data while loading
+    const startTime = performance.now();
     if (force) setIsRefreshing(true);
+    // Remove this line: setIsLoading(true); - only show loading for initial load
+    if (!flowRunsData.length) setIsLoading(true); // Only show skeleton on first load
 
     try {
-      const data = await getUploads("");
-      console.log("Fetched data:", data);
-      const validData = Array.isArray(data) ? data : [];
+      const data = await getUploads("", {
+        limit: 100,
+        recent: true,
+        status: selectedStatus || null,
+      });
 
-      // Update state and cache
-      setFlowRunsData(validData);
-      setCacheData(validData);
+      console.log("Fetched optimized data:", data);
+
+      const freshData = data.logs || [];
+
+      // Remove duplicates
+      const uniqueData = freshData.filter(
+        (item, index, self) =>
+          index === self.findIndex((t) => t.fileRef === item.fileRef)
+      );
+
+      // Smart update: only update if data actually changed
+      if (JSON.stringify(uniqueData) !== JSON.stringify(flowRunsData)) {
+        setFlowRunsData(uniqueData);
+        console.log("Data updated with changes");
+      } else {
+        console.log("No changes detected, keeping existing data");
+      }
+
+      // Handle timeouts
+      if (data.timedOut && data.timedOut.length > 0) {
+        console.log(
+          `${data.timedOut.length} workflows timed out:`,
+          data.timedOut
+        );
+        setTimedOutWorkflows(data.timedOut);
+      }
+
+      // Update cache
+      setCacheData({ logs: uniqueData, ...data });
     } catch (error) {
       console.error("Failed to fetch uploads:", error);
-      // On error, fall back to cache if available
-      const cached = getCachedData();
-      setFlowRunsData(cached || []);
+      // On error, DON'T clear existing data - keep showing what we have
+      console.log("Error occurred, keeping existing data visible");
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Always clear loading state
       setIsRefreshing(false);
+      const endTime = performance.now();
+      console.log(`API call took ${endTime - startTime} milliseconds`);
     }
   };
 
   // Initial load
   useEffect(() => {
-    fetchData(); // Try cache first
-  }, []);
+    fetchData(); // Initial load
+
+    const interval = setInterval(() => {
+      fetchData(true); // Auto-refresh every 15 seconds
+    }, 15000); // Reduced from 30 seconds for more real-time feel
+
+    return () => clearInterval(interval);
+  }, [selectedStatus]);
 
   // Manual refresh handler
   const handleRefresh = () => {
     fetchData(true); // Force reload
+  };
+
+  // copy handler for declaration ID
+  const handleCopyDeclarationId = async (declarationId, event) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(declarationId.toString());
+      setCopiedDeclarationId(declarationId);
+      setTimeout(() => setCopiedDeclarationId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy declaration ID: ", err);
+    }
   };
 
   // Transform and sort data: newest first
@@ -204,7 +292,9 @@ export default function FlowRunsTable({ onSelectRun }) {
   }, [flowRunsData]);
 
   // Get unique values for filters
-  const uniqueProjects = [...new Set(transformedData.map((run) => run.projectName))];
+  const uniqueProjects = [
+    ...new Set(transformedData.map((run) => run.projectName)),
+  ];
   const uniqueStatuses = [...new Set(transformedData.map((run) => run.status))];
 
   // Filter data
@@ -350,7 +440,7 @@ export default function FlowRunsTable({ onSelectRun }) {
   // Skeleton loader component
   const SkeletonRow = () => (
     <tr className="animate-pulse">
-      {Array(4)
+      {Array(5) // Changed from 4 to 5
         .fill()
         .map((_, i) => (
           <td key={i} className="px-6 py-4">
@@ -367,12 +457,17 @@ export default function FlowRunsTable({ onSelectRun }) {
         <div className="px-6 py-5 border-b border-[#EAEAEA]">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
-              <h2 className="text-2xl font-semibold text-[#1A1A1A]">Flow Runs</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-semibold text-[#1A1A1A]">
+                  Flow Runs
+                </h2>
+                <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
+                  Live
+                </div>
+              </div>
               <p className="text-[#6B6B6B] text-sm mt-1">
-                {filteredData.length} total runs •{" "}
-                <span className="text-[#1A1A1A] font-medium">
-                  {paginatedData.length} shown
-                </span>
+                {filteredData.length} total runs • Auto-refresh every 15s
               </p>
             </div>
             <div className="flex items-center space-x-3">
@@ -384,7 +479,9 @@ export default function FlowRunsTable({ onSelectRun }) {
                 title="Refresh data"
               >
                 <RefreshCw
-                  className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+                  className={`w-4 h-4 mr-2 ${
+                    isRefreshing ? "animate-spin" : ""
+                  }`}
                 />
                 Refresh
               </button>
@@ -427,7 +524,10 @@ export default function FlowRunsTable({ onSelectRun }) {
                 />
               </button>
 
-              {(searchTerm || selectedProject || selectedStatus || timeRange !== "all") && (
+              {(searchTerm ||
+                selectedProject ||
+                selectedStatus ||
+                timeRange !== "all") && (
                 <button
                   onClick={handleClearFilters}
                   className="px-3 py-2 text-sm font-medium text-[#E54C37] hover:text-[#C23D2E] transition-colors"
@@ -501,10 +601,13 @@ export default function FlowRunsTable({ onSelectRun }) {
             <thead className="bg-[#FDF9F8]">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
-                  File Reference
+                  Reference
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
-                  Project
+                  Declaration ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
+                  Company
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider border-b border-[#EAEAEA]">
                   Triggered At
@@ -518,7 +621,15 @@ export default function FlowRunsTable({ onSelectRun }) {
               {isLoading ? (
                 // Skeleton loader
                 Array.from({ length: itemsPerPage }).map((_, i) => (
-                  <SkeletonRow key={i} />
+                  <tr key={i} className="animate-pulse">
+                    {Array(5)
+                      .fill()
+                      .map((_, j) => (
+                        <td key={j} className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded"></div>
+                        </td>
+                      ))}
+                  </tr>
                 ))
               ) : paginatedData.length > 0 ? (
                 paginatedData.map((run) => {
@@ -530,6 +641,7 @@ export default function FlowRunsTable({ onSelectRun }) {
                       onClick={() => onSelectRun(run.rawData)}
                       className={`cursor-pointer hover:shadow-sm transition-all duration-200 group ${statusConfig.rowBg}`}
                     >
+                      {/* File Reference Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center justify-between group">
                           <div className="flex items-center">
@@ -541,12 +653,18 @@ export default function FlowRunsTable({ onSelectRun }) {
                           <button
                             onClick={(e) => handleCopyRef(run.fileRef, e)}
                             className="opacity-0 group-hover:opacity-100 ml-2 p-1 text-gray-400 hover:text-gray-600 transition-all duration-200 rounded"
-                            title={copiedRef === run.fileRef ? "Copied!" : "Copy reference"}
+                            title={
+                              copiedRef === run.fileRef
+                                ? "Copied!"
+                                : "Copy reference"
+                            }
                           >
                             {copiedRef === run.fileRef ? (
                               <div className="flex items-center text-green-600">
                                 <Check className="w-3 h-3 mr-1" />
-                                <span className="text-xs font-medium">Copied</span>
+                                <span className="text-xs font-medium">
+                                  Copied
+                                </span>
                               </div>
                             ) : (
                               <Copy className="w-3 h-3" />
@@ -554,6 +672,48 @@ export default function FlowRunsTable({ onSelectRun }) {
                           </button>
                         </div>
                       </td>
+
+                      {/* Declaration ID Column - NEW */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {run.rawData.declarationId ? (
+                          <div className="flex items-center justify-between group">
+                            <span className="text-sm font-medium text-[#1A1A1A] group-hover:text-[#E54C37] transition-colors">
+                              {run.rawData.declarationId}
+                            </span>
+                            <button
+                              onClick={(e) =>
+                                handleCopyDeclarationId(
+                                  run.rawData.declarationId,
+                                  e
+                                )
+                              }
+                              className="opacity-0 group-hover:opacity-100 ml-2 p-1 text-gray-400 hover:text-gray-600 transition-all duration-200 rounded"
+                              title={
+                                copiedDeclarationId ===
+                                run.rawData.declarationId
+                                  ? "Copied!"
+                                  : "Copy Declaration ID"
+                              }
+                            >
+                              {copiedDeclarationId ===
+                              run.rawData.declarationId ? (
+                                <div className="flex items-center text-green-600">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  <span className="text-xs font-medium">
+                                    Copied
+                                  </span>
+                                </div>
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </td>
+
+                      {/* Project Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm">
                           <span
@@ -563,9 +723,13 @@ export default function FlowRunsTable({ onSelectRun }) {
                           </span>
                         </div>
                       </td>
+
+                      {/* Triggered At Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-[#6B6B6B]">
                         {new Date(run.triggerTime).toLocaleString()}
                       </td>
+
+                      {/* Status Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusConfig.color}`}
@@ -579,12 +743,13 @@ export default function FlowRunsTable({ onSelectRun }) {
                 })
               ) : (
                 <tr>
-                  <td className="px-6 py-16 text-center" colSpan="4">
+                  <td className="px-6 py-16 text-center" colSpan="5">
                     <h3 className="text-lg font-medium text-[#1A1A1A]">
                       No runs found
                     </h3>
                     <p className="text-sm text-[#6B6B6B] mt-1">
-                      There are no test runs to display. Try adjusting your filters or trigger a new run.
+                      There are no test runs to display. Try adjusting your
+                      filters or trigger a new run.
                     </p>
                   </td>
                 </tr>
@@ -597,7 +762,8 @@ export default function FlowRunsTable({ onSelectRun }) {
         <div className="px-6 py-4 border-t border-[#EAEAEA] bg-[#FDF9F8]">
           <div className="flex items-center justify-between">
             <div className="text-sm text-[#6B6B6B]">
-              Showing {startIndex + 1} to {endIndex} of {filteredData.length} results
+              Showing {startIndex + 1} to {endIndex} of {filteredData.length}{" "}
+              results
             </div>
             <div className="flex items-center space-x-2">
               <button
@@ -611,7 +777,9 @@ export default function FlowRunsTable({ onSelectRun }) {
               {renderPaginationButtons()}
 
               <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, currentPage + 1))
+                }
                 disabled={currentPage === totalPages || isLoading}
                 className="px-3 py-1 text-sm font-medium text-[#6B6B6B] hover:text-[#1A1A1A] disabled:opacity-50 disabled:cursor-not-allowed"
               >
