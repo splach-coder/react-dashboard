@@ -11,6 +11,7 @@ import UserComparisonSelector from './pages/statistics/UserComparisonSelector.js
 import MonthlyReport from './pages/statistics/MonthlyReport';
 import Profile from './pages/profile/Profile';
 import EmailAssistant from './pages/ai-agents/EmailAssistant';
+import ContainerWeightCheck from './pages/Containers/ContainerWeightCheck';
 
 
 const router = createBrowserRouter([
@@ -27,7 +28,8 @@ const router = createBrowserRouter([
       { path: 'statistics/performance/compare/:user1/:user2', element: <UserCompareDashboard /> },
       { path: 'statistics/monthly-report', element: <MonthlyReport /> },
       { path: 'settings/profile', element: <Profile /> },
-      { path: 'ai-agents/email-assistant', element: <EmailAssistant /> }
+      { path: 'ai-agents/email-assistant', element: <EmailAssistant /> },
+      { path: 'container-weight-check', element: <ContainerWeightCheck /> }
     ],
     errorElement: <NotFound />,
   },

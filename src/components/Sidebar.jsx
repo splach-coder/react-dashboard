@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Settings,
   HelpCircle,
+  Container,
   X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -57,6 +58,16 @@ const Sidebar = ({ collapsed, toggle }) => {
       ],
     },
     {
+      id: 'containers',
+      label: 'Containers',
+      icon: Container,
+      path: '/containers',
+      subtitles: [
+        { label: 'Weight Violations', path: '/container-weight-check' },
+      ],
+      hasSubmenu: true,
+    },
+    /*{
       id: 'ai-agents',
       label: 'AI Agents',
       icon: Sparkles,
@@ -65,7 +76,7 @@ const Sidebar = ({ collapsed, toggle }) => {
         { label: 'Email Assistant', path: '/ai-agents/email-assistant' },
       ],
       hasSubmenu: true,
-    },
+    }*/,
     {
       id: 'uploads',
       label: 'Uploads',
@@ -340,11 +351,15 @@ const Sidebar = ({ collapsed, toggle }) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">L</span>
+          <div className="w-9 h-9">
+            <img
+              src="/images/cropped-DKM-Embleem-192x192.png"
+              alt="DKM Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           {!collapsed && (
-            <span className="font-bold text-text-primary text-lg">DKM</span>
+            <span className="font-bold text-primary text-lg font-mono">DKM Dashboard </span>
           )}
         </div>
         <button
