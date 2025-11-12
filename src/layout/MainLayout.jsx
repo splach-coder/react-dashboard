@@ -8,7 +8,7 @@ export default function MainLayout() {
   return (
     <div className="flex h-screen overflow-x-visible">
       <Sidebar collapsed={collapsed} toggle={() => setCollapsed(!collapsed)} />
-      <main className={`flex-1 transition-all ease-in ${collapsed ? 'ms-14' : 'ms-64'}`}>
+      <main className={`flex-1 transition-all ease-in ${collapsed ? 'ms-16' : 'ms-64'}`}>
         <Outlet />
       </main>
     </div>

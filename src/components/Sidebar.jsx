@@ -61,13 +61,13 @@ const Sidebar = ({ collapsed, toggle }) => {
       id: 'containers',
       label: 'Containers',
       icon: Container,
-      path: '/containers',
+      path: '/container-weight-check',
       subtitles: [
         { label: 'Weight Violations', path: '/container-weight-check' },
       ],
       hasSubmenu: true,
     },
-    /*{
+    {
       id: 'ai-agents',
       label: 'AI Agents',
       icon: Sparkles,
@@ -76,12 +76,12 @@ const Sidebar = ({ collapsed, toggle }) => {
         { label: 'Email Assistant', path: '/ai-agents/email-assistant' },
       ],
       hasSubmenu: true,
-    }*/,
+    },
     {
       id: 'uploads',
       label: 'Uploads',
       icon: Upload,
-      path: '/uploads',
+      path: '/uploads/flows',
       subtitles: [
         { label: 'Flows', path: '/uploads/flows' },
         { label: 'Informations', path: '/uploads/flows/informations' },
@@ -93,7 +93,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       id: 'statistics',
       label: 'Statistics',
       icon: BarChart3,
-      path: '/statistics',
+      path: '/statistics/performance',
       subtitles: [
         { label: 'Performance', path: '/statistics/performance' },
         { label: 'Compare', path: '/statistics/performance/compare' },
@@ -359,7 +359,7 @@ const Sidebar = ({ collapsed, toggle }) => {
             />
           </div>
           {!collapsed && (
-            <span className="font-bold text-primary text-lg font-mono">DKM Dashboard </span>
+            <span className="font-bold text-primary text-lg font-mono">DKM </span>
           )}
         </div>
         <button
