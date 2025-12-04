@@ -40,7 +40,6 @@ const writeCache = (payload) => {
 
 
 // --- Helper Components ---
-
 const StatCard = ({ title, value, icon, subtext }) => (
   <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
     <div className="flex items-center justify-between">
@@ -100,7 +99,6 @@ const PerformanceTable = ({ data, sortConfig, requestSort, onRowClick }) => (
 
 
 // --- Main Component ---
-
 const MonthlyReport = () => {
   const navigate = useNavigate();
   const [teamData, setTeamData] = useState({ import: [], export: [] });

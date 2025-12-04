@@ -12,6 +12,8 @@ import MonthlyReport from './pages/statistics/MonthlyReport';
 import Profile from './pages/profile/Profile';
 import EmailAssistant from './pages/ai-agents/EmailAssistant';
 import ContainerWeightCheck from './pages/Containers/ContainerWeightCheck';
+import ArrivalsTable from './pages/arrivals/ArrivalsTable';
+import OutboundsTable from './pages/arrivals/OutboundsTable.jsx';
 
 
 const router = createBrowserRouter([
@@ -29,7 +31,9 @@ const router = createBrowserRouter([
       { path: 'statistics/monthly-report', element: <MonthlyReport /> },
       { path: 'settings/profile', element: <Profile /> },
       { path: 'ai-agents/email-assistant', element: <EmailAssistant /> },
-      { path: 'container-weight-check', element: <ContainerWeightCheck /> }
+      { path: 'container-weight-check', element: <ContainerWeightCheck /> },
+      { path: 'arrivals', element: <ArrivalsTable /> },
+      {path: 'arrivals/outbounds/:mrn', element: <OutboundsTable /> },
     ],
     errorElement: <NotFound />,
   },

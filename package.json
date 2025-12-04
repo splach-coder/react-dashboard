@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@kenjiuno/msgreader": "^1.26.0-beta1",
-    "@tanstack/react-query": "^5.81.5",
+    "@tanstack/react-query": "^5.90.11",
+    "@tanstack/react-query-devtools": "^5.91.1",
     "buffer": "^6.0.3",
     "chart.js": "^4.5.0",
     "date-fns": "^4.1.0",
