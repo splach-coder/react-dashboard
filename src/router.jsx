@@ -25,34 +25,49 @@ const router = createBrowserRouter([
     path: '/',
     element: <MainLayout />,
     children: [
-      { path: 'uploads/flows', element: <FlowDashboard /> },
-      { path: 'uploads/flows/request', element: <RequestFlow /> },
-      { path: 'uploads/flows/informations', element: <FlowInfo /> },
+      {
+        path: 'uploads/flows',
+        element: withAccess(<FlowDashboard />, ['admin', 'manager', 'Team Leader', 'Senior']),
+      },
+      {
+        path: 'uploads/flows/request',
+        element: withAccess(<RequestFlow />, ['admin', 'manager', 'Team Leader', 'Senior']),
+      },
+      {
+        path: 'uploads/flows/informations',
+        element: withAccess(<FlowInfo />, ['admin', 'manager', 'Team Leader', 'Senior']),
+      },
       {
         path: 'statistics/performance',
-        element: withAccess(<CustomsDashboard />, ['admin', 'ops']),
+        element: withAccess(<CustomsDashboard />, ['admin', 'manager']),
       },
       {
         path: 'statistics/performance/:username',
-        element: withAccess(<UserPerformanceDashboard />, ['admin', 'ops']),
+        element: withAccess(<UserPerformanceDashboard />, ['admin', 'manager']),
       },
       {
         path: 'statistics/performance/compare',
-        element: withAccess(<UserComparisonSelector />, ['admin', 'ops']),
+        element: withAccess(<UserComparisonSelector />, ['admin', 'manager']),
       },
       {
         path: 'statistics/performance/compare/:user1/:user2',
-        element: withAccess(<UserCompareDashboard />, ['admin', 'ops']),
+        element: withAccess(<UserCompareDashboard />, ['admin', 'manager']),
       },
       {
         path: 'statistics/monthly-report',
-        element: withAccess(<MonthlyReport />, ['admin', 'ops']),
+        element: withAccess(<MonthlyReport />, ['admin', 'manager']),
       },
       { path: 'settings/profile', element: withAccess(<Profile />, ['authenticated']) },
-      { path: 'ai-agents/email-assistant', element: <EmailAssistant /> },
-      { path: 'container-weight-check', element: <ContainerWeightCheck /> },
-      { path: 'arrivals', element: <ArrivalsTable /> },
-      {path: 'arrivals/outbounds/:mrn', element: <OutboundsTable /> },
+      {
+        path: 'ai-agents/email-assistant',
+        element: withAccess(<EmailAssistant />, ['admin', 'manager', 'Team Leader', 'Senior']),
+      },
+      {
+        path: 'container-weight-check',
+        element: withAccess(<ContainerWeightCheck />, ['admin', 'manager', 'Team Leader', 'Senior']),
+      },
+      { path: 'arrivals', element: withAccess(<ArrivalsTable />, ['user', 'admin', 'manager', 'Team Leader', 'Senior']) },
+      { path: 'arrivals/outbounds/:mrn', element: withAccess(<OutboundsTable />, ['user', 'admin', 'manager', 'Team Leader', 'Senior']) },
     ],
     errorElement: <NotFound />,
   },

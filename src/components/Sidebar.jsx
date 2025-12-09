@@ -35,8 +35,8 @@ const Sidebar = ({ collapsed, toggle }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedItems, setExpandedItems] = useState({});
   const [hoveredItem, setHoveredItem] = useState(null);
-  const [activePanel, setActivePanel] = useState(null); // For mobile panel
-  const { user, loading } = useAuth();
+  const [activePanel, setActivePanel] = useState(null);
+  const { user, loading, hasRole } = useAuth();
 
   const toggleExpanded = (itemId) => {
     setExpandedItems((prev) => ({
@@ -51,6 +51,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       label: 'Dashboard',
       icon: LayoutDashboard,
       path: '/',
+      allowedRoles: ['admin', 'manager', 'Team Leader', 'Senior'],
       subtitles: [
         { label: 'Overview', path: '/overview' },
         { label: 'Analytics', path: '/analytics' },
@@ -62,6 +63,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       label: 'Containers',
       icon: Container,
       path: '/container-weight-check',
+      allowedRoles: ['admin', 'manager', 'Team Leader', 'Senior'],
       subtitles: [
         { label: 'Weight Violations', path: '/container-weight-check' },
       ],
@@ -72,6 +74,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       label: 'Arrivals',
       icon: Truck,
       path: '/arrivals',
+      allowedRoles: ['user', 'admin', 'manager', 'Team Leader', 'Senior'],
       subtitles: [
         { label: 'Arrivals', path: '/arrivals' },
       ],
@@ -82,6 +85,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       label: 'Uploads',
       icon: Upload,
       path: '/uploads/flows',
+      allowedRoles: ['admin', 'manager', 'Team Leader', 'Senior'],
       subtitles: [
         { label: 'Flows', path: '/uploads/flows' },
         { label: 'Informations', path: '/uploads/flows/informations' },
@@ -94,6 +98,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       label: 'Statistics',
       icon: BarChart3,
       path: '/statistics/performance',
+      allowedRoles: ['admin', 'manager'],
       subtitles: [
         { label: 'Performance', path: '/statistics/performance' },
         { label: 'Compare', path: '/statistics/performance/compare' },
@@ -109,6 +114,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       label: 'Settings',
       icon: Settings,
       path: '/settings',
+      allowedRoles: ['authenticated'],
       subtitles: [
         { label: 'Profile', path: '/settings/profile' },
         { label: 'Preferences', path: '/settings/preferences' },
@@ -121,6 +127,7 @@ const Sidebar = ({ collapsed, toggle }) => {
       label: 'Help',
       icon: HelpCircle,
       path: '/help',
+      allowedRoles: ['authenticated'],
       subtitles: [
         { label: 'Documentation', path: '/help/documentation' },
         { label: 'Support', path: '/help/support' },
@@ -130,12 +137,18 @@ const Sidebar = ({ collapsed, toggle }) => {
     },
   ];
 
+  // Helper to check access
+  const checkAccess = (item) => {
+    if (!item.allowedRoles) return true; // Default to visible if no roles specified
+    return item.allowedRoles.some(role => hasRole(role));
+  };
+
   const filteredMenuItems = menuItems.filter((item) =>
-    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+    item.label.toLowerCase().includes(searchQuery.toLowerCase()) && checkAccess(item)
   );
 
   const filteredOtherItems = otherItems.filter((item) =>
-    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+    item.label.toLowerCase().includes(searchQuery.toLowerCase()) && checkAccess(item)
   );
 
   const renderMenuItem = (item, isInOthersSection = false) => {
@@ -177,17 +190,15 @@ const Sidebar = ({ collapsed, toggle }) => {
               <div className="flex items-center space-x-3">
                 <item.icon
                   size={20}
-                  className={`${
-                    isActive
-                      ? 'text-white'
-                      : 'text-text-muted group-hover:text-primary'
-                  }`}
+                  className={`${isActive
+                    ? 'text-white'
+                    : 'text-text-muted group-hover:text-primary'
+                    }`}
                 />
                 {!collapsed && (
                   <span
-                    className={`font-medium ${
-                      isActive ? 'text-white' : 'text-text-primary'
-                    }`}
+                    className={`font-medium ${isActive ? 'text-white' : 'text-text-primary'
+                      }`}
                   >
                     {item.label}
                   </span>
@@ -244,51 +255,17 @@ const Sidebar = ({ collapsed, toggle }) => {
       <>
         {/* Bottom Bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border shadow-lg z-50">
-          <div className="flex justify-around items-center h-16">
-            {/* Dashboard */}
-            <button
-              onClick={() => setActivePanel('dashboard')}
-              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
-            >
-              <LayoutDashboard size={22} />
-              <span className="text-xs mt-1">Dashboard</span>
-            </button>
-
-            {/* Uploads */}
-            <button
-              onClick={() => setActivePanel('uploads')}
-              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
-            >
-              <Upload size={22} />
-              <span className="text-xs mt-1">Uploads</span>
-            </button>
-
-            {/* Statistics */}
-            <button
-              onClick={() => setActivePanel('statistics')}
-              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
-            >
-              <BarChart3 size={22} />
-              <span className="text-xs mt-1">Stats</span>
-            </button>
-
-            {/* Settings */}
-            <button
-              onClick={() => setActivePanel('settings')}
-              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
-            >
-              <Settings size={22} />
-              <span className="text-xs mt-1">Settings</span>
-            </button>
-
-            {/* Help */}
-            <button
-              onClick={() => setActivePanel('help')}
-              className="flex flex-col items-center justify-center p-2 text-text-muted hover:text-primary"
-            >
-              <HelpCircle size={22} />
-              <span className="text-xs mt-1">Help</span>
-            </button>
+          <div className="flex items-center h-16 overflow-x-auto no-scrollbar px-2">
+            {[...filteredMenuItems, ...filteredOtherItems].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActivePanel(item.id)}
+                className="flex flex-col items-center justify-center p-2 min-w-[70px] flex-shrink-0 text-text-muted hover:text-primary"
+              >
+                <item.icon size={22} />
+                <span className="text-xs mt-1 whitespace-nowrap">{item.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -368,9 +345,8 @@ const Sidebar = ({ collapsed, toggle }) => {
         >
           <ChevronRight
             size={20}
-            className={`text-white transform transition-transform duration-200 bg-primary rounded-md  ${
-              collapsed ? '' : 'rotate-180'
-            }`}
+            className={`text-white transform transition-transform duration-200 bg-primary rounded-md  ${collapsed ? '' : 'rotate-180'
+              }`}
           />
         </button>
       </div>

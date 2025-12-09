@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  ArrowLeft, 
-  Package, 
-  FileText, 
+import {
+  ArrowLeft,
+  Package,
+  FileText,
   AlertCircle,
   RefreshCw,
   CheckCircle,
   XCircle,
-  ArrowUp, 
+  ArrowUp,
   ArrowDown,
   Plus,
   X
@@ -75,7 +75,7 @@ const OutboundsTable = () => {
 
     const aValue = a[sortConfig.key] || '';
     const bValue = b[sortConfig.key] || '';
-    
+
     // Check if the values are numeric (for packages, mass, etc.)
     const isNumeric = typeof aValue === 'number' && typeof bValue === 'number';
 
@@ -88,10 +88,10 @@ const OutboundsTable = () => {
 
     // Special handling for number sorting to ensure consistency
     if (isNumeric) {
-        if (aValue < bValue) comparison = -1;
-        if (aValue > bValue) comparison = 1;
+      if (aValue < bValue) comparison = -1;
+      if (aValue > bValue) comparison = 1;
     }
-    
+
     return sortConfig.direction === 'asc' ? comparison : comparison * -1;
   });
 
@@ -106,11 +106,11 @@ const OutboundsTable = () => {
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return null;
     if (sortConfig.direction === 'asc') {
-        return <ArrowUp className="w-3 h-3 ml-1" />;
+      return <ArrowUp className="w-3 h-3 ml-1" />;
     }
     return <ArrowDown className="w-3 h-3 ml-1" />;
   };
-  
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -142,6 +142,30 @@ const OutboundsTable = () => {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'date_acceptation') {
+      // Remove any non-digit characters
+      const numbers = value.replace(/\D/g, '');
+      let formatted = numbers;
+
+      // Limit to 8 digits (DDMMYYYY)
+      if (numbers.length > 8) return;
+
+      if (numbers.length > 2) {
+        formatted = `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+      }
+      if (numbers.length > 4) {
+        formatted = `${formatted.slice(0, 5)}/${numbers.slice(4)}`;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted
+      }));
+      setFormError(null);
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -151,6 +175,7 @@ const OutboundsTable = () => {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
+    if (addOutboundMutation.isPending) return;
     setFormError(null);
 
     // Validation
@@ -174,7 +199,7 @@ const OutboundsTable = () => {
     const outboundData = {
       mrn: formData.mrn.trim(),
       nombre_total_des_conditionnements: formData.nombre_total_des_conditionnements.trim(),
-      type_de_declaration: formData.type_de_declaration || 'IM',
+      type_de_declaration: 'IM', // Always IM
       document_precedent: documentPrecedent,
       document_d_accompagnement: formData.document_d_accompagnement.trim() || '',
       numero_de_reference: formData.numero_de_reference.trim() || '',
@@ -257,16 +282,16 @@ const OutboundsTable = () => {
   }
 
   // Calculate saldo status
-  const saldoStatus = inboundData.saldo === 0 
+  const saldoStatus = inboundData.saldo === 0
     ? { label: 'Complete', color: 'success', icon: CheckCircle }
-    : inboundData.saldo > 0 
-    ? { label: 'Incomplete', color: 'error', icon: XCircle }
-    : null;
+    : inboundData.saldo > 0
+      ? { label: 'Incomplete', color: 'error', icon: XCircle }
+      : null;
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1800px] mx-auto">
-        
+
         {/* Back Button */}
         <button
           onClick={() => navigate('/arrivals')}
@@ -343,22 +368,20 @@ const OutboundsTable = () => {
             </div>
             <div>
               <p className="text-xs text-text-muted uppercase mb-1">Saldo</p>
-              <p className={`font-semibold ${
-                inboundData?.saldo === 0 ? 'text-success' : 
-                inboundData?.saldo > 0 ? 'text-error' : 
-                'text-text-muted'
-              }`}>
+              <p className={`font-semibold ${inboundData?.saldo === 0 ? 'text-success' :
+                  inboundData?.saldo > 0 ? 'text-error' :
+                    'text-text-muted'
+                }`}>
                 {inboundData?.saldo !== undefined ? formatNumber(inboundData.saldo) : 'N/A'}
               </p>
             </div>
             {saldoStatus && (
               <div>
                 <p className="text-xs text-text-muted uppercase mb-1">Status</p>
-                <div className={`inline-flex items-center gap-1.5 px-2 py-1 border text-xs font-medium ${
-                  saldoStatus.color === 'success' 
-                    ? 'border-success text-success bg-green-50' 
+                <div className={`inline-flex items-center gap-1.5 px-2 py-1 border text-xs font-medium ${saldoStatus.color === 'success'
+                    ? 'border-success text-success bg-green-50'
                     : 'border-error text-error bg-red-50'
-                }`}>
+                  }`}>
                   <saldoStatus.icon className="w-3.5 h-3.5" />
                   {saldoStatus.label}
                 </div>
@@ -378,26 +401,24 @@ const OutboundsTable = () => {
               Documents extracted and linked to this arrival
             </p>
           </div>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary-dark transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Outbound
-          </button>
+          {inboundData?.saldo !== 0 && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary-dark transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Outbound
+            </button>
+          )}
         </div>
 
         {/* Add Outbound Modal */}
         {showAddForm && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                handleCancelForm();
-              }
-            }}
+          // onClick removed to prevent closing on outside click
           >
-            <div 
+            <div
               className="bg-surface border border-border rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
@@ -414,7 +435,7 @@ const OutboundsTable = () => {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 {formError && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -425,6 +446,7 @@ const OutboundsTable = () => {
 
                 <form onSubmit={handleFormSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 1. MRN */}
                     <div>
                       <label className="block text-sm font-medium text-text-primary mb-1">
                         MRN <span className="text-error">*</span>
@@ -440,6 +462,26 @@ const OutboundsTable = () => {
                       />
                     </div>
 
+                    {/* 2. Date d'acceptation */}
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Date d'acceptation
+                      </label>
+                      <input
+                        type="text"
+                        name="date_acceptation"
+                        value={formData.date_acceptation}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder="DD/MM/YYYY"
+                        maxLength={10}
+                      />
+                      <p className="text-xs text-text-muted mt-1">
+                        Numbers only (DDMMYYYY)
+                      </p>
+                    </div>
+
+                    {/* Packages (Kept required) */}
                     <div>
                       <label className="block text-sm font-medium text-text-primary mb-1">
                         Nombre total des conditionnements <span className="text-error">*</span>
@@ -455,6 +497,7 @@ const OutboundsTable = () => {
                       />
                     </div>
 
+                    {/* 3. Type de déclaration (Fixed to IM) */}
                     <div>
                       <label className="block text-sm font-medium text-text-primary mb-1">
                         Type de déclaration
@@ -464,43 +507,13 @@ const OutboundsTable = () => {
                         value={formData.type_de_declaration}
                         onChange={handleFormChange}
                         className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        disabled // Disabled as it's always IM
                       >
                         <option value="IM">IM</option>
-                        <option value="EX">EX</option>
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary mb-1">
-                        Document précédent
-                      </label>
-                      <input
-                        type="text"
-                        name="document_precedent"
-                        value={formData.document_precedent}
-                        onChange={handleFormChange}
-                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
-                        placeholder={`N821 ${mrn}`}
-                      />
-                      <p className="text-xs text-text-muted mt-1">
-                        Leave empty to auto-generate: N821 {mrn}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary mb-1">
-                        Document d'accompagnement
-                      </label>
-                      <input
-                        type="text"
-                        name="document_d_accompagnement"
-                        value={formData.document_d_accompagnement}
-                        onChange={handleFormChange}
-                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
-                        placeholder="e.g., N325 EMCU8612798-03"
-                      />
-                    </div>
-
+                    {/* 4. Numéro de référence */}
                     <div>
                       <label className="block text-sm font-medium text-text-primary mb-1">
                         Numéro de référence
@@ -515,20 +528,36 @@ const OutboundsTable = () => {
                       />
                     </div>
 
+                    {/* 5. Document d'accompagnement */}
                     <div>
                       <label className="block text-sm font-medium text-text-primary mb-1">
-                        Date d'acceptation
+                        Document d'accompagnement
                       </label>
                       <input
                         type="text"
-                        name="date_acceptation"
-                        value={formData.date_acceptation}
+                        name="document_d_accompagnement"
+                        value={formData.document_d_accompagnement}
                         onChange={handleFormChange}
                         className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
-                        placeholder="e.g., 05/12/2025"
+                        placeholder="e.g., N325 EMCU8612798-03"
+                      />
+                    </div>
+
+                    {/* 6. Document précédent */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Document précédent
+                      </label>
+                      <input
+                        type="text"
+                        name="document_precedent"
+                        value={formData.document_precedent}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder={`N821 ${mrn}`}
                       />
                       <p className="text-xs text-text-muted mt-1">
-                        Format: DD/MM/YYYY
+                        Leave empty to auto-generate: N821 {mrn}
                       </p>
                     </div>
                   </div>
@@ -578,11 +607,10 @@ const OutboundsTable = () => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">Saldo:</span>
-                <span className={`font-semibold ${
-                  inboundData?.saldo === 0 ? 'text-success' : 
-                  inboundData?.saldo > 0 ? 'text-error' : 
-                  'text-text-muted'
-                }`}>
+                <span className={`font-semibold ${inboundData?.saldo === 0 ? 'text-success' :
+                    inboundData?.saldo > 0 ? 'text-error' :
+                      'text-text-muted'
+                  }`}>
                   {inboundData?.saldo !== undefined ? formatNumber(inboundData.saldo) : 'N/A'} packages remaining
                 </span>
               </div>
@@ -599,7 +627,7 @@ const OutboundsTable = () => {
                   #
                 </th>
                 {/* Sortable Column: MRN */}
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => handleSort('mrn')}
                 >
@@ -609,7 +637,7 @@ const OutboundsTable = () => {
                   </div>
                 </th>
                 {/* Sortable Column: Nombre total des conditionnements */}
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => handleSort('nombre_total_des_conditionnements')}
                 >
@@ -622,7 +650,7 @@ const OutboundsTable = () => {
                   Document précédent
                 </th>
                 {/* Sortable Column: Date d'acceptation */}
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => handleSort('date_acceptation')}
                 >
@@ -632,7 +660,7 @@ const OutboundsTable = () => {
                   </div>
                 </th>
                 {/* Sortable Column: Numéro de référence */}
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => handleSort('numero_de_reference')}
                 >
@@ -672,11 +700,10 @@ const OutboundsTable = () => {
                           e.stopPropagation();
                           handleCopy(outbound.mrn, `mrn-${index}`);
                         }}
-                        className={`inline-block px-2 py-1 rounded transition-all duration-300 ${
-                          copiedId === `mrn-${index}` 
-                            ? 'bg-primary text-white' 
+                        className={`inline-block px-2 py-1 rounded transition-all duration-300 ${copiedId === `mrn-${index}`
+                            ? 'bg-primary text-white'
                             : 'hover:bg-primary hover:text-white hover:shadow-sm'
-                        }`}
+                          }`}
                       >
                         {copiedId === `mrn-${index}` ? '✓ Copied!' : outbound.mrn || 'N/A'}
                       </button>
@@ -696,11 +723,10 @@ const OutboundsTable = () => {
                           e.stopPropagation();
                           handleCopy(outbound.numero_de_reference, `ref-${index}`);
                         }}
-                        className={`inline-block px-2 py-1 rounded transition-all duration-300 ${
-                          copiedId === `ref-${index}` 
-                            ? 'bg-primary text-white' 
+                        className={`inline-block px-2 py-1 rounded transition-all duration-300 ${copiedId === `ref-${index}`
+                            ? 'bg-primary text-white'
                             : 'hover:bg-primary hover:text-white hover:shadow-sm'
-                        }`}
+                          }`}
                       >
                         {copiedId === `ref-${index}` ? '✓ Copied!' : outbound.numero_de_reference || 'N/A'}
                       </button>

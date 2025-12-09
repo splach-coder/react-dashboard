@@ -2,7 +2,8 @@
 export const userRoleMap = {
   'anas.benabbou@dkm-customs.com': ['admin'],
   'taha.nghimi@dkm-customs.com': ['admin'],
-  'ben.mansour@dkm-customs.com': ['admin']
+  'ben.mansour@dkm-customs.com': ['admin'],
+  'luc.dekerf@dkm-customs.com': ['admin']
 };
 
 // Roles automatically granted to any authenticated user.
