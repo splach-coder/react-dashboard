@@ -14,7 +14,11 @@ import EmailAssistant from './pages/ai-agents/EmailAssistant';
 import ContainerWeightCheck from './pages/Containers/ContainerWeightCheck';
 import ArrivalsTable from './pages/arrivals/ArrivalsTable';
 import OutboundsTable from './pages/arrivals/OutboundsTable.jsx';
+import RequireRole from './components/auth/RequireRole';
 
+const withAccess = (element, allowedRoles) => (
+  <RequireRole allowed={allowedRoles}>{element}</RequireRole>
+);
 
 const router = createBrowserRouter([
   {
@@ -24,12 +28,27 @@ const router = createBrowserRouter([
       { path: 'uploads/flows', element: <FlowDashboard /> },
       { path: 'uploads/flows/request', element: <RequestFlow /> },
       { path: 'uploads/flows/informations', element: <FlowInfo /> },
-      { path: 'statistics/performance', element: <CustomsDashboard /> },
-      { path: 'statistics/performance/:username', element: <UserPerformanceDashboard /> },
-      { path: 'statistics/performance/compare', element: <UserComparisonSelector /> },
-      { path: 'statistics/performance/compare/:user1/:user2', element: <UserCompareDashboard /> },
-      { path: 'statistics/monthly-report', element: <MonthlyReport /> },
-      { path: 'settings/profile', element: <Profile /> },
+      {
+        path: 'statistics/performance',
+        element: withAccess(<CustomsDashboard />, ['admin', 'ops']),
+      },
+      {
+        path: 'statistics/performance/:username',
+        element: withAccess(<UserPerformanceDashboard />, ['admin', 'ops']),
+      },
+      {
+        path: 'statistics/performance/compare',
+        element: withAccess(<UserComparisonSelector />, ['admin', 'ops']),
+      },
+      {
+        path: 'statistics/performance/compare/:user1/:user2',
+        element: withAccess(<UserCompareDashboard />, ['admin', 'ops']),
+      },
+      {
+        path: 'statistics/monthly-report',
+        element: withAccess(<MonthlyReport />, ['admin', 'ops']),
+      },
+      { path: 'settings/profile', element: withAccess(<Profile />, ['authenticated']) },
       { path: 'ai-agents/email-assistant', element: <EmailAssistant /> },
       { path: 'container-weight-check', element: <ContainerWeightCheck /> },
       { path: 'arrivals', element: <ArrivalsTable /> },

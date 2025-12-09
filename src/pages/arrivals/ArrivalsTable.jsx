@@ -10,66 +10,88 @@ import {
   XCircle,
   ChevronLeft,
   ChevronRight,
-  Filter 
+  Filter,
+  Clock // Icône pour le statut "Waiting for Outbounds"
 } from 'lucide-react';
 import { getMasterRecords } from '../../api/api';
 
+// Options pour le menu déroulant du filtre
 const StatusFilterOptions = [
   { value: 'all', label: 'All Statuses' },
-  { value: 'complete', label: 'Complete (Saldo 0)', color: 'text-success' },
-  { value: 'incomplete', label: 'Incomplete (Saldo > 0)', color: 'text-error' },
+  { value: 'complete', label: 'Complete', color: 'text-success' },
+  { value: 'error', label: 'Error', color: 'text-error' },
+  { value: 'waiting', label: 'Waiting for Outbounds', color: 'text-blue-700' }, 
   { value: 'unknown', label: 'Unknown', color: 'text-warning' },
 ];
 
 const ArrivalsTable = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // NOUVEL ÉTAT DE FILTRE
+  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedId, setCopiedId] = useState(null);
   const navigate = useNavigate();
   const rowsPerPage = 8;
 
-  // ✨ React Query - Automatic caching, loading, error handling
+  // Configuration de React Query pour la récupération des données
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['arrivals'],
     queryFn: getMasterRecords,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000, 
+    cacheTime: 10 * 60 * 1000,
   });
 
   const arrivals = data?.records || [];
   
-  // Get status based on saldo
-  const getStatus = (saldo) => {
+  // Fonction pour déterminer le statut en fonction du saldo et du nombre d'outbounds
+  const getStatus = (arrival) => {
+    const saldo = arrival.saldo;
+    const outboundsCount = Array.isArray(arrival.Outbounds) ? arrival.Outbounds.length : 0; 
+    
+    // Règles de statut :
+    // - Saldo = 0 -> Complete
     if (saldo === 0) {
       return { 
         label: 'Complete', 
-        value: 'complete', // Added value for filtering
+        value: 'complete', 
         color: 'success',
         icon: CheckCircle
       };
-    } else if (saldo > 0) {
+    }
+
+    // - Saldo != 0 et Outbounds > 0 -> Error
+    if (saldo !== 0 && outboundsCount > 0) {
       return { 
-        label: 'Incomplete', 
-        value: 'incomplete', // Added value for filtering
+        label: 'Error', 
+        value: 'error', 
         color: 'error',
         icon: XCircle
       };
-    } else {
+    } 
+    
+    // - Saldo != 0 et Outbounds = 0 -> Waiting for Outbounds
+    if (saldo !== 0 && outboundsCount === 0) {
       return { 
-        label: 'Unknown', 
-        value: 'unknown', // Added value for filtering
-        color: 'warning',
-        icon: AlertCircle
+        label: 'Waiting for Outbounds', 
+        value: 'waiting',
+        color: 'info',
+        icon: Clock 
       };
     }
+    
+    // - Autres cas -> Unknown
+    return { 
+      label: 'Unknown', 
+      value: 'unknown', 
+      color: 'warning',
+      icon: AlertCircle
+    };
   };
 
-  // Filter logic (UPDATED)
+  // Logique de filtrage combinée (Recherche + Statut)
   const filteredArrivals = arrivals.filter(arrival => {
     const searchLower = searchTerm.toLowerCase();
     
-    // 1. Filter by Search Term
+    // 1. Filtrage par terme de recherche
     const matchesSearch = (
       arrival.MRN?.toLowerCase().includes(searchLower) ||
       arrival.COMMERCIALREFERENCE?.toLowerCase().includes(searchLower) ||
@@ -78,8 +100,8 @@ const ArrivalsTable = () => {
     
     if (!matchesSearch) return false;
 
-    // 2. Filter by Status
-    const status = getStatus(arrival.saldo);
+    // 2. Filtrage par statut
+    const status = getStatus(arrival);
     if (statusFilter === 'all') {
       return true;
     }
@@ -87,39 +109,44 @@ const ArrivalsTable = () => {
     return status.value === statusFilter;
   });
 
-  // Sort: Errors first (saldo !== 0), then by ID descending
+  // Tri : Erreurs en premier, puis par ID descendant
   const sortedArrivals = [...filteredArrivals].sort((a, b) => {
-    // First, sort by error status (saldo !== 0 comes first)
-    const aHasError = a.saldo !== 0 && a.saldo !== undefined;
-    const bHasError = b.saldo !== 0 && b.saldo !== undefined;
+    // Trier par erreur ou attente en premier
+    const statusA = getStatus(a).value;
+    const statusB = getStatus(b).value;
+
+    const aIsPriority = statusA === 'error' || statusA === 'waiting';
+    const bIsPriority = statusB === 'error' || statusB === 'waiting';
     
-    if (aHasError && !bHasError) return -1;
-    if (!aHasError && bHasError) return 1;
+    if (aIsPriority && !bIsPriority) return -1;
+    if (!aIsPriority && bIsPriority) return 1;
     
-    // Then sort by ID descending
+    // Ensuite tri par ID descendant
     const aId = a.DECLARATIONID || 0;
     const bId = b.DECLARATIONID || 0;
     return bId - aId;
   });
 
-  // Pagination logic
+  // Logique de pagination
   const totalPages = Math.ceil(sortedArrivals.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const paginatedArrivals = sortedArrivals.slice(startIndex, endIndex);
 
-  // Reset to page 1 when search or filter changes (UPDATED)
+  // Effet pour réinitialiser la pagination lors du changement de recherche ou de filtre
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]); 
 
-  // Statistics
+  // Statistiques par statut principal
   const stats = {
     total: arrivals.length,
-    complete: arrivals.filter(a => a.saldo === 0).length,
-    incomplete: arrivals.filter(a => a.saldo !== 0 && a.saldo !== undefined).length,
+    complete: arrivals.filter(a => getStatus(a).value === 'complete').length,
+    error: arrivals.filter(a => getStatus(a).value === 'error').length,
+    waiting: arrivals.filter(a => getStatus(a).value === 'waiting').length,
   };
 
+  // Fonctions d'aide
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -143,7 +170,6 @@ const ArrivalsTable = () => {
     navigate(`/arrivals/outbounds/${mrn}`);
   };
 
-  // Manual refresh
   const handleRefresh = () => {
     refetch();
   };
@@ -162,13 +188,13 @@ const ArrivalsTable = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Rendu de l'état de chargement et d'erreur
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
           <RefreshCw className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
           <p className="text-text-muted text-lg">Loading arrivals data...</p>
-          <p className="text-text-muted text-sm mt-2">Fetching from server...</p>
         </div>
       </div>
     );
@@ -196,7 +222,7 @@ const ArrivalsTable = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1800px] mx-auto">
         
-        {/* Header */}
+        {/* Header and Controls */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -231,8 +257,13 @@ const ArrivalsTable = () => {
             </div>
             <div className="flex items-center gap-2">
               <XCircle className="w-5 h-5 text-error" />
-              <span className="text-text-muted">Incomplete:</span>
-              <span className="font-semibold text-error">{stats.incomplete}</span>
+              <span className="text-text-muted">Error:</span>
+              <span className="font-semibold text-error">{stats.error}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-700" />
+              <span className="text-text-muted">Waiting:</span>
+              <span className="font-semibold text-blue-700">{stats.waiting}</span>
             </div>
             {isFetching && (
               <div className="ml-auto flex items-center gap-2 text-sm text-text-muted">
@@ -242,7 +273,7 @@ const ArrivalsTable = () => {
             )}
           </div>
 
-          {/* Search and Filter Bar (UPDATED) */}
+          {/* Search and Filter Bar */}
           <div className="flex gap-4">
             {/* Search Bar */}
             <div className="relative flex-grow">
@@ -256,7 +287,7 @@ const ArrivalsTable = () => {
               />
             </div>
             
-            {/* Status Filter (NEW) */}
+            {/* Status Filter */}
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
               <select
@@ -268,7 +299,7 @@ const ArrivalsTable = () => {
                   <option 
                     key={option.value} 
                     value={option.value}
-                    className={option.color} // Tailwind class for color is typically applied to text
+                    className={option.color} 
                   >
                     {option.label}
                   </option>
@@ -326,9 +357,18 @@ const ArrivalsTable = () => {
                 </tr>
               ) : (
                 paginatedArrivals.map((arrival, index) => {
-                  const status = getStatus(arrival.saldo);
+                  const status = getStatus(arrival); 
                   const StatusIcon = status.icon;
                   
+                  // Classes CSS pour les différents statuts
+                  const statusClasses = status.color === 'success' 
+                    ? 'border-success text-success bg-green-50' 
+                    : status.color === 'error'
+                    ? 'border-error text-error bg-red-50'
+                    : status.color === 'info' 
+                    ? 'border-blue-400 text-blue-700 bg-blue-50' // Style pour "Waiting for Outbounds"
+                    : 'border-gray-300 text-text-muted bg-gray-50';
+
                   return (
                     <tr
                       key={arrival.MRN || index}
@@ -422,13 +462,7 @@ const ArrivalsTable = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className={`inline-flex items-center gap-1.5 px-2 py-1 border text-xs font-medium ${
-                          status.color === 'success' 
-                            ? 'border-success text-success bg-green-50' 
-                            : status.color === 'error'
-                            ? 'border-error text-error bg-red-50'
-                            : 'border-gray-300 text-text-muted bg-gray-50'
-                        }`}>
+                        <div className={`inline-flex items-center gap-1.5 px-2 py-1 border text-xs font-medium ${statusClasses}`}>
                           <StatusIcon className="w-3.5 h-3.5" />
                           {status.label}
                         </div>

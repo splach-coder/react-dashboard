@@ -54,7 +54,7 @@ const Profile = () => {
                         <Mail className="w-5 h-5 text-text-muted mr-4" />
                         <div>
                             <p className="text-xs text-text-muted">Email Address</p>
-                            <p className="font-medium text-text-primary">{user.id}</p>
+                            <p className="font-medium text-text-primary">{user.email}</p>
                         </div>
                     </div>
                     

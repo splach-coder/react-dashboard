@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { getUser } from '../utils/getUser';
 
 const AuthContext = createContext();
@@ -15,8 +15,18 @@ export const AuthProvider = ({ children }) => {
     });
   }, []);
 
+  const roles = useMemo(() => user?.roles || [], [user]);
+  const isAuthenticated = !!user;
+
+  const hasRole = role => {
+    if (!role) return false;
+    if (role === 'public') return true;
+    if (role === 'authenticated') return isAuthenticated;
+    return roles.map(r => r.toLowerCase()).includes(role.toLowerCase());
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, roles, loading, isAuthenticated, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

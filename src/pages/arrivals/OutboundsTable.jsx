@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
   Package, 
@@ -10,15 +10,29 @@ import {
   CheckCircle,
   XCircle,
   ArrowUp, 
-  ArrowDown 
+  ArrowDown,
+  Plus,
+  X
 } from 'lucide-react';
-import { getMasterRecords } from '../../api/api';
+import { getMasterRecords, addOutbound } from '../../api/api';
 
 const OutboundsTable = () => {
   const { mrn } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [copiedId, setCopiedId] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formData, setFormData] = useState({
+    mrn: '',
+    nombre_total_des_conditionnements: '',
+    type_de_declaration: 'IM',
+    document_precedent: '',
+    document_d_accompagnement: '',
+    numero_de_reference: '',
+    date_acceptation: ''
+  });
+  const [formError, setFormError] = useState(null);
 
   // ✨ React Query - Uses cached data from ArrivalsTable (NO API CALL if cached!)
   const { data, isLoading, error, refetch, isFetching } = useQuery({
@@ -26,6 +40,29 @@ const OutboundsTable = () => {
     queryFn: getMasterRecords,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
+  });
+
+  // Mutation for adding outbound
+  const addOutboundMutation = useMutation({
+    mutationFn: (outboundData) => addOutbound(mrn, outboundData),
+    onSuccess: () => {
+      // Invalidate and refetch arrivals data
+      queryClient.invalidateQueries({ queryKey: ['arrivals'] });
+      setShowAddForm(false);
+      setFormData({
+        mrn: '',
+        nombre_total_des_conditionnements: '',
+        type_de_declaration: 'IM',
+        document_precedent: '',
+        document_d_accompagnement: '',
+        numero_de_reference: '',
+        date_acceptation: ''
+      });
+      setFormError(null);
+    },
+    onError: (error) => {
+      setFormError(error.message || 'Failed to add outbound. Please try again.');
+    }
   });
 
   const arrivals = data?.records || [];
@@ -102,6 +139,75 @@ const OutboundsTable = () => {
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setFormError(null);
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    setFormError(null);
+
+    // Validation
+    if (!formData.mrn.trim()) {
+      setFormError('MRN is required');
+      return;
+    }
+    if (!formData.nombre_total_des_conditionnements.trim()) {
+      setFormError('Nombre total des conditionnements is required');
+      return;
+    }
+
+    // Format document_precedent with inbound MRN if not already formatted
+    let documentPrecedent = formData.document_precedent.trim();
+    if (documentPrecedent && !documentPrecedent.includes(mrn)) {
+      documentPrecedent = `N821 ${mrn}`;
+    } else if (!documentPrecedent) {
+      documentPrecedent = `N821 ${mrn}`;
+    }
+
+    const outboundData = {
+      mrn: formData.mrn.trim(),
+      nombre_total_des_conditionnements: formData.nombre_total_des_conditionnements.trim(),
+      type_de_declaration: formData.type_de_declaration || 'IM',
+      document_precedent: documentPrecedent,
+      document_d_accompagnement: formData.document_d_accompagnement.trim() || '',
+      numero_de_reference: formData.numero_de_reference.trim() || '',
+      date_acceptation: formData.date_acceptation.trim() || ''
+    };
+
+    addOutboundMutation.mutate(outboundData);
+  };
+
+  const handleCancelForm = () => {
+    setShowAddForm(false);
+    setFormData({
+      mrn: '',
+      nombre_total_des_conditionnements: '',
+      type_de_declaration: 'IM',
+      document_precedent: '',
+      document_d_accompagnement: '',
+      numero_de_reference: '',
+      date_acceptation: ''
+    });
+    setFormError(null);
+  };
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showAddForm) {
+        handleCancelForm();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showAddForm]);
 
   if (isLoading) {
     return (
@@ -262,15 +368,203 @@ const OutboundsTable = () => {
         </div>
 
         {/* Outbounds Header */}
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Outbound Documents ({outbounds.length})
-          </h2>
-          <p className="text-text-muted text-sm mt-1">
-            Documents extracted and linked to this arrival
-          </p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Outbound Documents ({outbounds.length})
+            </h2>
+            <p className="text-text-muted text-sm mt-1">
+              Documents extracted and linked to this arrival
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary-dark transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Outbound
+          </button>
         </div>
+
+        {/* Add Outbound Modal */}
+        {showAddForm && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleCancelForm();
+              }
+            }}
+          >
+            <div 
+              className="bg-surface border border-border rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-surface border-b border-border px-6 py-4 flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-text-primary flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Add New Outbound
+                </h3>
+                <button
+                  onClick={handleCancelForm}
+                  disabled={addOutboundMutation.isPending}
+                  className="text-text-muted hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                {formError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                    <AlertCircle className="w-4 h-4 inline mr-2" />
+                    {formError}
+                  </div>
+                )}
+
+                <form onSubmit={handleFormSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        MRN <span className="text-error">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="mrn"
+                        value={formData.mrn}
+                        onChange={handleFormChange}
+                        required
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder="e.g., 25BEH1000001CADYR4"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Nombre total des conditionnements <span className="text-error">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="nombre_total_des_conditionnements"
+                        value={formData.nombre_total_des_conditionnements}
+                        onChange={handleFormChange}
+                        required
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder="e.g., 7"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Type de déclaration
+                      </label>
+                      <select
+                        name="type_de_declaration"
+                        value={formData.type_de_declaration}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                      >
+                        <option value="IM">IM</option>
+                        <option value="EX">EX</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Document précédent
+                      </label>
+                      <input
+                        type="text"
+                        name="document_precedent"
+                        value={formData.document_precedent}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder={`N821 ${mrn}`}
+                      />
+                      <p className="text-xs text-text-muted mt-1">
+                        Leave empty to auto-generate: N821 {mrn}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Document d'accompagnement
+                      </label>
+                      <input
+                        type="text"
+                        name="document_d_accompagnement"
+                        value={formData.document_d_accompagnement}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder="e.g., N325 EMCU8612798-03"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Numéro de référence
+                      </label>
+                      <input
+                        type="text"
+                        name="numero_de_reference"
+                        value={formData.numero_de_reference}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder="e.g., EMCU8612798-03"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">
+                        Date d'acceptation
+                      </label>
+                      <input
+                        type="text"
+                        name="date_acceptation"
+                        value={formData.date_acceptation}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
+                        placeholder="e.g., 05/12/2025"
+                      />
+                      <p className="text-xs text-text-muted mt-1">
+                        Format: DD/MM/YYYY
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={handleCancelForm}
+                      disabled={addOutboundMutation.isPending}
+                      className="px-6 py-2 border border-border bg-surface hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={addOutboundMutation.isPending}
+                      className="px-6 py-2 bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {addOutboundMutation.isPending ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4" />
+                          Add Outbound
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Summary Info Bar - Moved Above Table */}
         {outbounds.length > 0 && (

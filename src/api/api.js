@@ -84,3 +84,36 @@ export async function getMasterRecords() {
     throw error;
   }
 }
+
+export async function addOutbound(inboundMrn, outboundData) {
+  const API_URL = "https://functionapp-python-uploads-huaafaf5f0cxc8g4.westeurope-01.azurewebsites.net/api/DgMRNExtractor";
+  const API_KEY = import.meta.env.VITE_API_V2_KEY;
+  
+  const payload = {
+    route: "add_outbound",
+    inbound_mrn: inboundMrn,
+    outbound_data: outboundData
+  };
+
+  try {
+    const response = await fetch(`${API_URL}?code=${API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to add outbound: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data;
+    
+  } catch (error) {
+    console.error('Error adding outbound:', error);
+    throw error;
+  }
+}
