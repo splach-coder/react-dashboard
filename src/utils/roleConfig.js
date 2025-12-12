@@ -7,5 +7,4 @@ export const userRoleMap = {
 };
 
 // Roles automatically granted to any authenticated user.
-export const defaultAuthenticatedRoles = ['authenticated'];
-
+export const defaultAuthenticatedRoles = ['authenticated', 'user'];

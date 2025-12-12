@@ -369,8 +369,8 @@ const OutboundsTable = () => {
             <div>
               <p className="text-xs text-text-muted uppercase mb-1">Saldo</p>
               <p className={`font-semibold ${inboundData?.saldo === 0 ? 'text-success' :
-                  inboundData?.saldo > 0 ? 'text-error' :
-                    'text-text-muted'
+                inboundData?.saldo > 0 ? 'text-error' :
+                  'text-text-muted'
                 }`}>
                 {inboundData?.saldo !== undefined ? formatNumber(inboundData.saldo) : 'N/A'}
               </p>
@@ -379,8 +379,8 @@ const OutboundsTable = () => {
               <div>
                 <p className="text-xs text-text-muted uppercase mb-1">Status</p>
                 <div className={`inline-flex items-center gap-1.5 px-2 py-1 border text-xs font-medium ${saldoStatus.color === 'success'
-                    ? 'border-success text-success bg-green-50'
-                    : 'border-error text-error bg-red-50'
+                  ? 'border-success text-success bg-green-50'
+                  : 'border-error text-error bg-red-50'
                   }`}>
                   <saldoStatus.icon className="w-3.5 h-3.5" />
                   {saldoStatus.label}
@@ -609,9 +609,14 @@ const OutboundsTable = () => {
                 <span className="text-text-muted">Saldo:</span>
                 <span className={`font-semibold ${inboundData?.saldo === 0 ? 'text-success' :
                     inboundData?.saldo > 0 ? 'text-error' :
-                      'text-text-muted'
+                      'text-orange-600'
                   }`}>
-                  {inboundData?.saldo !== undefined ? formatNumber(inboundData.saldo) : 'N/A'} packages remaining
+                  {inboundData?.saldo !== undefined
+                    ? `${formatNumber(Math.abs(inboundData.saldo))} ${inboundData.saldo > 0 ? 'packages remaining' :
+                      inboundData.saldo < 0 ? 'packages over-declared' :
+                        'complete'
+                    }`
+                    : 'N/A'}
                 </span>
               </div>
             </div>
@@ -701,8 +706,8 @@ const OutboundsTable = () => {
                           handleCopy(outbound.mrn, `mrn-${index}`);
                         }}
                         className={`inline-block px-2 py-1 rounded transition-all duration-300 ${copiedId === `mrn-${index}`
-                            ? 'bg-primary text-white'
-                            : 'hover:bg-primary hover:text-white hover:shadow-sm'
+                          ? 'bg-primary text-white'
+                          : 'hover:bg-primary hover:text-white hover:shadow-sm'
                           }`}
                       >
                         {copiedId === `mrn-${index}` ? '✓ Copied!' : outbound.mrn || 'N/A'}
@@ -724,8 +729,8 @@ const OutboundsTable = () => {
                           handleCopy(outbound.numero_de_reference, `ref-${index}`);
                         }}
                         className={`inline-block px-2 py-1 rounded transition-all duration-300 ${copiedId === `ref-${index}`
-                            ? 'bg-primary text-white'
-                            : 'hover:bg-primary hover:text-white hover:shadow-sm'
+                          ? 'bg-primary text-white'
+                          : 'hover:bg-primary hover:text-white hover:shadow-sm'
                           }`}
                       >
                         {copiedId === `ref-${index}` ? '✓ Copied!' : outbound.numero_de_reference || 'N/A'}
