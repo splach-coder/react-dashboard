@@ -88,6 +88,17 @@ app.post('/api/tracking/bulk', (req, res) => {
   res.json({ success: true, message: `${updateCount} records updated successfully` });
 });
 
+// Health Check & Version
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', version: '1.2.0', timestamp: new Date().toISOString() });
+});
+
+// Debug middleware for unhandled requests
+app.use((req, res, next) => {
+  console.log(`[Request] ${req.method} ${req.url}`);
+  next();
+});
+
 // Handle SPA routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));

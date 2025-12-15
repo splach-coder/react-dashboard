@@ -17,8 +17,11 @@ import {
   Download, // Icon for export
   CheckSquare,
   Square,
-  X // Added for clear button
+  X, // Added for clear button
+  FileSpreadsheet
 } from 'lucide-react';
+import * as XLSX from 'xlsx-js-style';
+import ExportModal from '../../components/ExportModal';
 import { getMasterRecords } from '../../api/api';
 import { calculateDaysSinceRelease, getAllTrackingRecords, addBulkTrackingRecords } from '../../api/trackingApi';
 import { useAuth } from '../../context/AuthContext';
@@ -52,6 +55,8 @@ const ArrivalsTable = () => {
   const [selectedIds, setSelectedIds] = useState([]); // Array of selected MRNs
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkNote, setBulkNote] = useState('');
+  const [exportModal, setExportModal] = useState({ isOpen: false, scope: 'all' });
+  const [isExporting, setIsExporting] = useState(false);
 
   // Date Filters
   const [startDate, setStartDate] = useState(() => sessionStorage.getItem('arrivals_startDate') || '');
@@ -164,7 +169,14 @@ const ArrivalsTable = () => {
     // 2. Filtrage par statut
     const status = getStatus(arrival);
     let statusMatch = true;
-    if (statusFilter !== 'all') {
+
+    if (statusFilter === 'critical') {
+      const days = calculateDaysSinceRelease(arrival.GDSREL_DATETIME);
+      statusMatch = status.value === 'error' && days >= 2;
+    } else if (statusFilter === 'longWaiting') {
+      const days = calculateDaysSinceRelease(arrival.GDSREL_DATETIME);
+      statusMatch = status.value === 'waiting' && days >= 2;
+    } else if (statusFilter !== 'all') {
       statusMatch = status.value === statusFilter;
     }
 
@@ -237,7 +249,7 @@ const ArrivalsTable = () => {
     sessionStorage.setItem('arrivals_endDate', endDate);
   }, [endDate]);
 
-  // Handle Escape key to clear selection or close modal
+  // Handle Escape key to clear selection, close modal, or reset filter
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -245,13 +257,15 @@ const ArrivalsTable = () => {
           setBulkModalOpen(false);
         } else if (selectedIds.length > 0) {
           setSelectedIds([]);
+        } else if (statusFilter !== 'all') {
+          setStatusFilter('all');
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [bulkModalOpen, selectedIds]);
+  }, [bulkModalOpen, selectedIds, statusFilter]);
 
   // Statistiques par statut principal
   const stats = {
@@ -386,64 +400,125 @@ const ArrivalsTable = () => {
     bulkMutation.mutate(records);
   };
 
-  const handleExportCSV = () => {
-    // 1. Define headers
-    const headers = [
-      'MRN',
-      'Declaration ID',
-      'Commercial Ref',
-      'Status',
-      'Days Waiting',
-      'Packages',
-      'Gross Mass',
-      'Saldo',
-      'Checked By',
-      'Check Date',
-      'Last Note'
-    ];
+  const handleRequestExport = (scope) => {
+    setExportModal({ isOpen: true, scope });
+  };
 
-    // 2. Map data
-    // If items are selected, export only those. Otherwise export all filtered.
-    const itemsToExport = selectedIds.length > 0
-      ? arrivals.filter(a => selectedIds.includes(a.MRN))
-      : filteredArrivals;
+  const executeExport = async ({ includeOutbounds }) => {
+    setIsExporting(true);
+    try {
+      // Helper for styling
+      const applyStyles = (ws, headerColor = "FFD966") => {
+        if (!ws['!ref']) return;
+        const range = XLSX.utils.decode_range(ws['!ref']);
 
-    const csvData = itemsToExport.map(arrival => {
-      const status = getStatus(arrival);
-      const tracking = getLatestTrackingInfo(arrival.MRN);
-      const days = calculateDaysSinceRelease(arrival.GDSREL_DATETIME);
+        // Auto-width (naive)
+        const cols = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          cols.push({ wch: 18 });
+        }
+        ws['!cols'] = cols;
 
-      return [
-        arrival.MRN,
-        arrival.DECLARATIONID,
-        arrival.COMMERCIALREFERENCE || '',
-        status.label,
-        (status.value === 'waiting' || status.value === 'error') ? days : '',
-        arrival.TOTAL_PACKAGES,
-        arrival.TOTAL_ITEM_GROSSMASS,
-        arrival.saldo,
-        tracking ? tracking.user : '',
-        tracking ? new Date(tracking.timestamp).toLocaleDateString() : '',
-        tracking?.note ? `"${tracking.note.replace(/"/g, '""')}"` : '' // Escape quotes
-      ];
-    });
+        // Apply styles
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const addr = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[addr]) continue;
 
-    // 3. Convert to CSV string
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.join(','))
-    ].join('\n');
+            // Base Cell Style (Borders)
+            ws[addr].s = {
+              border: {
+                top: { style: 'thin', color: { auto: 1 } },
+                bottom: { style: 'thin', color: { auto: 1 } },
+                left: { style: 'thin', color: { auto: 1 } },
+                right: { style: 'thin', color: { auto: 1 } }
+              }
+            };
 
-    // 4. Download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `arrivals_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+            // Header Row Style
+            if (R === 0) {
+              ws[addr].s = {
+                ...ws[addr].s,
+                fill: { fgColor: { rgb: headerColor } },
+                font: { bold: true, sz: 11, name: "Calibri", color: { rgb: "000000" } },
+                alignment: { horizontal: "center", vertical: "center" }
+              };
+            }
+          }
+        }
+      };
+
+      // 1. Determine items to export
+      const itemsToExport = exportModal.scope === 'selection' && selectedIds.length > 0
+        ? arrivals.filter(a => selectedIds.includes(a.MRN))
+        : filteredArrivals;
+
+      // 2. Prepare Inbound Data (Sheet 1)
+      const inboundData = itemsToExport.map(arrival => {
+        const status = getStatus(arrival);
+        const tracking = getLatestTrackingInfo(arrival.MRN);
+        const days = calculateDaysSinceRelease(arrival.GDSREL_DATETIME);
+
+        return {
+          'MRN': arrival.MRN,
+          'Declaration ID': arrival.DECLARATIONID,
+          'Commercial Ref': arrival.COMMERCIALREFERENCE || '',
+          'Status': status.label,
+          'Days Waiting': (status.value === 'waiting' || status.value === 'error') ? days : '',
+          'Packages': arrival.TOTAL_PACKAGES,
+          'Gross Mass': arrival.TOTAL_ITEM_GROSSMASS,
+          'Saldo': arrival.saldo
+        };
+      });
+
+      // 3. Prepare Outbound Data (Sheet 2) if requested
+      let outboundData = [];
+      if (includeOutbounds) {
+        // Collect all related outbounds
+        itemsToExport.forEach(arrival => {
+          if (arrival.Outbounds && Array.isArray(arrival.Outbounds)) {
+            arrival.Outbounds.forEach(out => {
+              outboundData.push({
+                'Parent Inbound MRN': arrival.MRN,
+                'Outbound MRN': out.mrn || '',
+                'Type': out.type_de_declaration || 'IM',
+                'Packages': out.nombre_total_des_conditionnements || 0,
+                'Reference': out.numero_de_reference || '',
+                'Accepted Date': out.date_acceptation || '',
+                'Previous Doc': out.document_precedent || '',
+                'Accompanying Doc': out.document_d_accompagnement || ''
+              });
+            });
+          }
+        });
+      }
+
+      // 4. Create Workbook
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Inbounds
+      const ws1 = XLSX.utils.json_to_sheet(inboundData);
+      applyStyles(ws1, "FFD966"); // Yellow Header
+      XLSX.utils.book_append_sheet(wb, ws1, "Inbounds");
+
+      // Sheet 2: Outbounds (if requested)
+      if (includeOutbounds) {
+        const ws2 = XLSX.utils.json_to_sheet(outboundData);
+        applyStyles(ws2, "FFE699"); // Lighter Yellow Header
+        XLSX.utils.book_append_sheet(wb, ws2, "Linked Outbounds");
+      }
+
+      // 5. Download
+      const fileName = `arrivals_export_${includeOutbounds ? 'full' : 'basic'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+    } catch (error) {
+      console.error("Export failed", error);
+      alert("Export failed. Please check console.");
+    } finally {
+      setIsExporting(false);
+      setExportModal({ isOpen: false, scope: 'all' });
+    }
   };
 
   const handleOpenTracking = (arrival, e) => {
@@ -513,23 +588,40 @@ const ArrivalsTable = () => {
           </div>
 
           {/* Stats Bar */}
+          {/* Stats Bar */}
           <div className="flex items-center gap-8 py-4 px-6 bg-surface border border-border mb-6">
-            <div className="flex items-center gap-2">
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded transition-all ${statusFilter === 'all' ? 'bg-gray-100 ring-1 ring-gray-300 shadow-sm opacity-100' : 'opacity-50 hover:opacity-100 hover:bg-gray-50'}`}
+              onClick={() => setStatusFilter('all')}
+              title="Show all arrivals"
+            >
               <Package className="w-5 h-5 text-text-muted" />
               <span className="text-text-muted">Total:</span>
               <span className="font-semibold text-text-primary">{stats.total}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded transition-all ${statusFilter === 'complete' ? 'bg-green-50 ring-1 ring-green-200 shadow-sm opacity-100' : statusFilter === 'all' ? 'opacity-100 hover:bg-gray-50' : 'opacity-50 hover:opacity-100'}`}
+              onClick={() => setStatusFilter('complete')}
+              title="Shipments with Saldo = 0 (Completed)"
+            >
               <CheckCircle className="w-5 h-5 text-success" />
               <span className="text-text-muted">Complete:</span>
               <span className="font-semibold text-success">{stats.complete}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded transition-all ${statusFilter === 'error' ? 'bg-red-50 ring-1 ring-red-200 shadow-sm opacity-100' : statusFilter === 'all' ? 'opacity-100 hover:bg-gray-50' : 'opacity-50 hover:opacity-100'}`}
+              onClick={() => setStatusFilter('error')}
+              title="Shipments with Saldo discrepancies (started but incorrect)"
+            >
               <XCircle className="w-5 h-5 text-error" />
               <span className="text-text-muted">Error:</span>
               <span className="font-semibold text-error">{stats.error}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded transition-all ${statusFilter === 'waiting' ? 'bg-blue-50 ring-1 ring-blue-200 shadow-sm opacity-100' : statusFilter === 'all' ? 'opacity-100 hover:bg-gray-50' : 'opacity-50 hover:opacity-100'}`}
+              onClick={() => setStatusFilter('waiting')}
+              title="Shipments released but not yet declared (Saldo > 0, No Outbounds)"
+            >
               <Clock className="w-5 h-5 text-blue-700" />
               <span className="text-text-muted">Waiting:</span>
               <span className="font-semibold text-blue-700">{stats.waiting}</span>
@@ -538,13 +630,21 @@ const ArrivalsTable = () => {
             {/* Critical Stats Separator */}
             <div className="w-px h-8 bg-border mx-2"></div>
 
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 animate-pulse" />
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded transition-all ${statusFilter === 'critical' ? 'bg-red-50 ring-1 ring-red-200 shadow-sm opacity-100' : statusFilter === 'all' ? 'opacity-100 hover:bg-gray-50' : 'opacity-50 hover:opacity-100'}`}
+              onClick={() => setStatusFilter(statusFilter === 'critical' ? 'all' : 'critical')}
+              title="CRITICAL ERROR: Discrepancy persisting for more than 48 hours. Requires immediate fix."
+            >
+              <AlertCircle className={`w-5 h-5 text-red-600 ${stats.criticalErrors > 0 ? 'animate-pulse' : ''}`} />
               <span className="text-text-muted">Critical Errors ({'>'}2d):</span>
               <span className="font-bold text-red-600">{stats.criticalErrors}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Mail className="w-5 h-5 text-orange-600 animate-pulse" />
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded transition-all ${statusFilter === 'longWaiting' ? 'bg-orange-50 ring-1 ring-orange-200 shadow-sm opacity-100' : statusFilter === 'all' ? 'opacity-100 hover:bg-gray-50' : 'opacity-50 hover:opacity-100'}`}
+              onClick={() => setStatusFilter(statusFilter === 'longWaiting' ? 'all' : 'longWaiting')}
+              title="HIGH ALERT: Released more than 48 hours ago with NO action taken. Ghost shipment."
+            >
+              <Mail className={`w-5 h-5 text-orange-600 ${stats.longWaiting > 0 ? 'animate-pulse' : ''}`} />
               <span className="text-text-muted">High Alert ({'>'}2d):</span>
               <span className="font-bold text-orange-600">{stats.longWaiting}</span>
             </div>
@@ -625,9 +725,9 @@ const ArrivalsTable = () => {
 
             {/* Export Button */}
             <button
-              onClick={handleExportCSV}
+              onClick={() => handleRequestExport('all')}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"
-              title="Export current filtered list to CSV"
+              title="Export filtered list to Excel"
             >
               <Download className="w-4 h-4" />
               Export
@@ -949,11 +1049,11 @@ const ArrivalsTable = () => {
               </button>
             )}
             <button
-              onClick={handleExportCSV}
+              onClick={() => handleRequestExport('selection')}
               className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white/20 transition-colors"
             >
               <Download className="w-4 h-4" />
-              <span className="text-sm">Export CSV</span>
+              <span className="text-sm">Export Selected</span>
             </button>
           </div>
 
@@ -971,6 +1071,16 @@ const ArrivalsTable = () => {
           arrival={selectedArrival}
           onClose={handleCloseTracking}
           currentUser={user?.name || user?.email || 'Unknown User'}
+        />
+      )}
+
+      {exportModal.isOpen && (
+        <ExportModal
+          isOpen={exportModal.isOpen}
+          onClose={() => setExportModal({ ...exportModal, isOpen: false })}
+          onExport={executeExport}
+          count={exportModal.scope === 'selection' ? selectedIds.length : filteredArrivals.length}
+          scope={exportModal.scope}
         />
       )}
 

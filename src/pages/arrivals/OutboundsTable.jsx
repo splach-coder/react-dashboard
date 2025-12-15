@@ -12,7 +12,8 @@ import {
   ArrowUp,
   ArrowDown,
   Plus,
-  X
+  X,
+  Search
 } from 'lucide-react';
 import { getMasterRecords, addOutbound } from '../../api/api';
 
@@ -69,8 +70,22 @@ const OutboundsTable = () => {
   const inboundData = arrivals.find(a => a.MRN === mrn);
   const outbounds = inboundData?.Outbounds || [];
 
+  // Search state
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Sorting logic
-  const sortedOutbounds = [...outbounds].sort((a, b) => {
+  const filteredOutbounds = [...outbounds].filter(item => {
+    if (!searchTerm) return true;
+    const lowerTerm = searchTerm.toLowerCase();
+    return (
+      (item.mrn && item.mrn.toLowerCase().includes(lowerTerm)) ||
+      (item.document_precedent && item.document_precedent.toLowerCase().includes(lowerTerm)) ||
+      (item.numero_de_reference && item.numero_de_reference.toLowerCase().includes(lowerTerm)) ||
+      (item.document_d_accompagnement && item.document_d_accompagnement.toLowerCase().includes(lowerTerm))
+    );
+  });
+
+  const sortedOutbounds = filteredOutbounds.sort((a, b) => {
     if (!sortConfig.key) return 0; // No sorting if no key is selected
 
     const aValue = a[sortConfig.key] || '';
@@ -308,9 +323,19 @@ const OutboundsTable = () => {
               <h1 className="text-3xl font-semibold text-text-primary mb-1">
                 Inbound Details
               </h1>
-              <p className="text-text-muted">
-                MRN: {mrn}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-text-muted">
+                  MRN: {mrn}
+                </p>
+                <button
+                  onClick={() => handleCopy(`N821 ${mrn}`, 'chain-copy')}
+                  className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-xs text-text-muted hover:text-text-primary rounded transition-colors border border-gray-200"
+                  title="Copy as Document Precedent format (N821 ...)"
+                >
+                  {copiedId === 'chain-copy' ? <CheckCircle className="w-3 h-3 text-success" /> : <FileText className="w-3 h-3" />}
+                  {copiedId === 'chain-copy' ? 'Copied!' : 'Copy Chain'}
+                </button>
+              </div>
             </div>
             <button
               onClick={handleRefresh}
@@ -391,7 +416,7 @@ const OutboundsTable = () => {
         </div>
 
         {/* Outbounds Header */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -401,15 +426,30 @@ const OutboundsTable = () => {
               Documents extracted and linked to this arrival
             </p>
           </div>
-          {inboundData?.saldo !== 0 && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary-dark transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Outbound
-            </button>
-          )}
+
+          <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search documents..."
+                className="pl-9 pr-4 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary w-64 transition-all"
+              />
+            </div>
+
+            {inboundData?.saldo !== 0 && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary-dark transition-colors rounded-md shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Add Outbound
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Add Outbound Modal */}
@@ -495,6 +535,50 @@ const OutboundsTable = () => {
                         className="w-full px-3 py-2 border border-border bg-white focus:outline-none focus:border-primary transition-colors"
                         placeholder="e.g., 7"
                       />
+                      {inboundData?.saldo > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, nombre_total_des_conditionnements: String(inboundData.saldo) }))}
+                          className="text-xs text-primary hover:text-primary-dark mt-1 hover:underline flex items-center gap-1"
+                        >
+                          <ArrowDown className="w-3 h-3" />
+                          Use remaining ({inboundData.saldo})
+                        </button>
+                      )}
+
+                      {/* Smart Status Prediction */}
+                      {formData.nombre_total_des_conditionnements && !isNaN(formData.nombre_total_des_conditionnements) && (
+                        <div className="mt-2 text-xs">
+                          {(() => {
+                            const inputVal = parseInt(formData.nombre_total_des_conditionnements) || 0;
+                            const currentSaldo = inboundData?.saldo || 0;
+                            const projected = currentSaldo - inputVal;
+
+                            if (projected < 0) {
+                              return (
+                                <span className="flex items-center gap-1.5 text-red-600 font-medium bg-red-50 p-1.5 rounded">
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  Warning: Over-declaring by {Math.abs(projected)}! (New Saldo: {projected})
+                                </span>
+                              );
+                            } else if (projected === 0) {
+                              return (
+                                <span className="flex items-center gap-1.5 text-green-600 font-medium bg-green-50 p-1.5 rounded">
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  Perfect match! This will complete the arrival.
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="flex items-center gap-1.5 text-blue-600 font-medium bg-blue-50 p-1.5 rounded">
+                                  <ArrowDown className="w-3.5 h-3.5" />
+                                  Partial declaration. Remaining Saldo will be: {projected}
+                                </span>
+                              );
+                            }
+                          })()}
+                        </div>
+                      )}
                     </div>
 
                     {/* 3. Type de déclaration (Fixed to IM) */}
@@ -598,7 +682,7 @@ const OutboundsTable = () => {
         {/* Summary Info Bar - Moved Above Table */}
         {outbounds.length > 0 && (
           <div className="mb-4 px-6 py-4 bg-surface border border-border">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm mb-2">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
                 <span className="font-semibold text-text-primary">
@@ -608,8 +692,8 @@ const OutboundsTable = () => {
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">Saldo:</span>
                 <span className={`font-semibold ${inboundData?.saldo === 0 ? 'text-success' :
-                    inboundData?.saldo > 0 ? 'text-error' :
-                      'text-orange-600'
+                  inboundData?.saldo > 0 ? 'text-error' :
+                    'text-orange-600'
                   }`}>
                   {inboundData?.saldo !== undefined
                     ? `${formatNumber(Math.abs(inboundData.saldo))} ${inboundData.saldo > 0 ? 'packages remaining' :
@@ -620,6 +704,21 @@ const OutboundsTable = () => {
                 </span>
               </div>
             </div>
+
+            {/* Visual Progress Bar */}
+            {inboundData?.TOTAL_PACKAGES && (
+              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-500 ${inboundData.saldo === 0 ? 'bg-success' :
+                    inboundData.saldo < 0 ? 'bg-orange-500' :
+                      'bg-primary'
+                    }`}
+                  style={{
+                    width: `${Math.min(100, Math.max(0, ((inboundData.TOTAL_PACKAGES - (inboundData.saldo || 0)) / inboundData.TOTAL_PACKAGES) * 100))}%`
+                  }}
+                ></div>
+              </div>
+            )}
           </div>
         )}
 
@@ -687,9 +786,11 @@ const OutboundsTable = () => {
                 <tr>
                   <td colSpan="8" className="px-6 py-12 text-center">
                     <FileText className="w-12 h-12 text-text-muted mx-auto mb-3 opacity-50" />
-                    <p className="text-text-muted mb-2">No outbound records found for this arrival.</p>
+                    <p className="text-text-muted mb-2">
+                      {searchTerm ? 'No documents match your search.' : 'No outbound records found for this arrival.'}
+                    </p>
                     <p className="text-sm text-text-muted">
-                      Outbound documents will appear here once processed.
+                      {searchTerm ? 'Try adjusting your search terms.' : 'Outbound documents will appear here once processed.'}
                     </p>
                   </td>
                 </tr>

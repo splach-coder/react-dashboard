@@ -39,23 +39,23 @@ const router = createBrowserRouter([
       },
       {
         path: 'statistics/performance',
-        element: withAccess(<CustomsDashboard />, ['admin', 'manager']),
+        element: withAccess(<CustomsDashboard />, ['admin', 'Team Leader']),
       },
       {
         path: 'statistics/performance/:username',
-        element: withAccess(<UserPerformanceDashboard />, ['admin', 'manager']),
+        element: withAccess(<UserPerformanceDashboard />, ['admin', 'Team Leader']),
       },
       {
         path: 'statistics/performance/compare',
-        element: withAccess(<UserComparisonSelector />, ['admin', 'manager']),
+        element: withAccess(<UserComparisonSelector />, ['admin', 'Team Leader']),
       },
       {
         path: 'statistics/performance/compare/:user1/:user2',
-        element: withAccess(<UserCompareDashboard />, ['admin', 'manager']),
+        element: withAccess(<UserCompareDashboard />, ['admin', 'Team Leader']),
       },
       {
         path: 'statistics/monthly-report',
-        element: withAccess(<MonthlyReport />, ['admin', 'manager']),
+        element: withAccess(<MonthlyReport />, ['admin', 'Team Leader']),
       },
       { path: 'settings/profile', element: withAccess(<Profile />, ['authenticated']) },
       {
